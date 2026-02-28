@@ -2,35 +2,34 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwlJNuEDbHjf9QV-WBtA
 
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
-    const refreshBtn = document.getElementById('refresh-btn');
-    if (refreshBtn) refreshBtn.addEventListener('click', loadData);
+    document.getElementById('refresh-btn').addEventListener('click', loadData);
 });
 
 /**
- * Fungsi untuk mengubah teks dari GSheet menjadi simbol centang/silang
- * Diasumsikan data checklist di GSheet dipisahkan dengan koma atau karakter lain
- * atau jika Anda ingin memecah satu string menjadi kategori tetap.
+ * Logika Checklist: Mengubah teks GSheet menjadi baris Centang/Silang
  */
-function formatChecklist(text) {
-    if (!text) return '-';
+function generateChecklistUI(rawData) {
+    if (!rawData) return '<div class="text-muted small italic">Tidak ada data</div>';
 
-    // List kategori yang ingin ditampilkan
+    // Definisikan kategori yang dipantau
     const categories = ["Plano", "Label Price", "Display", "Kebersihan"];
+    let html = '<div class="checklist-box">';
     
-    // Logika: Kita cek apakah kata tersebut ada dalam teks dari GSheet
-    // Misal teks GSheet: "Plano ada, Label Price tidak, Display ada"
-    return `<ul class="list-unstyled mb-0" style="font-size: 0.8rem; text-align: left;">
-        ${categories.map(cat => {
-            // Cek apakah kategori tersebut ditandai sebagai 'ada', 'ya', atau 'ok' dalam teks
-            const regex = new RegExp(`${cat}\\s*[:=-]?\\s*(ada|ya|ok|v|check)`, 'i');
-            const isExist = regex.test(text);
-            
-            return `<li>
-                ${isExist ? '<span class="text-success fw-bold">✔</span>' : '<span class="text-danger fw-bold">✖</span>'} 
-                <span class="text-muted">${cat}</span>
-            </li>`;
-        }).join('')}
-    </ul>`;
+    categories.forEach(cat => {
+        // Cari kata kunci kategori + indikasi positif (ada/ya/ok/v)
+        const regexPositif = new RegExp(`${cat}.*(ada|ya|ok|v|lengkap|bersih)`, 'i');
+        const isTrue = regexPositif.test(rawData);
+
+        html += `
+            <div class="checklist-item">
+                <span class="text-secondary">${cat}</span>
+                <span class="${isTrue ? 'check-v' : 'check-x'}">${isTrue ? '✔' : '✖'}</span>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    return html;
 }
 
 function loadData() {
@@ -44,7 +43,6 @@ function loadData() {
         .then(res => res.json())
         .then(data => {
             loading.style.display = 'none';
-            
             data.forEach(item => {
                 const row = document.createElement('tr');
                 
@@ -54,19 +52,17 @@ function loadData() {
                 }
 
                 row.innerHTML = `
-                    <td class="small text-muted">${item.timestamp || '-'}</td>
-                    <td><strong>${item.nama || '-'}</strong></td>
-                    <td>${item.toko || '-'}</td>
-                    <td><span class="badge bg-secondary rounded-pill">${item.rak || '-'}</span></td>
-                    <td class="bg-light shadow-sm rounded">
-                        ${formatChecklist(item.checklist)}
-                    </td>
+                    <td class="small text-muted">${item.timestamp.split('T')[0] || item.timestamp}</td>
+                    <td><div class="fw-bold text-dark">${item.nama}</div></td>
+                    <td><span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25">${item.toko}</span></td>
+                    <td><span class="text-secondary small fw-bold">${item.rak}</span></td>
+                    <td>${generateChecklistUI(item.checklist)}</td>
                     <td>${fotoBtn}</td>
                     <td class="text-center">
-                        <select class="form-select form-select-sm select-status" style="width: 125px; margin: 0 auto;">
-                            <option value="">Pilih</option>
-                            <option value="APPROVE" class="text-success fw-bold">APPROVE</option>
-                            <option value="REJECT" class="text-danger fw-bold">REJECT</option>
+                        <select class="form-select form-select-sm select-status">
+                            <option value="">PILIH</option>
+                            <option value="APPROVE" class="text-success">APPROVE</option>
+                            <option value="REJECT" class="text-danger">REJECT</option>
                         </select>
                     </td>
                 `;
@@ -75,18 +71,17 @@ function loadData() {
         })
         .catch(err => {
             loading.style.display = 'none';
-            console.error("Fetch error:", err);
-            tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">Gagal memuat data.</td></tr>`;
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Koneksi GSheet Gagal. Periksa URL Apps Script.</td></tr>';
         });
 }
 
-// Fungsi Pop-up Foto (Tetap sama dengan sebelumnya untuk kestabilan)
 window.bukaPopupFoto = function(urlFoto) {
     const modalElement = document.getElementById('fotoModal');
     const imgTarget = document.getElementById('img-modal-target');
     const loadingFoto = document.getElementById('loading-foto');
     const modalInstance = bootstrap.Modal.getOrCreateInstance(modalElement);
 
+    // Konversi Link Drive ke format Thumbnail (Stabil & Cepat)
     let finalUrl = urlFoto;
     if (urlFoto.includes('drive.google.com')) {
         let fileId = "";
@@ -107,6 +102,6 @@ window.bukaPopupFoto = function(urlFoto) {
 
     imgTarget.onerror = () => {
         loadingFoto.style.display = 'none';
-        alert("Gambar tidak dapat dimuat. Cek izin sharing Drive.");
+        alert("Gambar gagal dimuat. Pastikan file Google Drive sudah diset 'Anyone with the link'.");
     };
 }
