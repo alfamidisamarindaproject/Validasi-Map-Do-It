@@ -3,24 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validasi MAP DO IT - Area Manager Portal</title>
+    <title>Validasi MAP DO IT - Samarinda</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
         .header-section { background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 30px 0; border-radius: 0 0 25px 25px; margin-bottom: 30px; }
-        .table-custom thead { background-color: #2a5298; color: white; vertical-align: middle; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .table-custom thead { background-color: #2a5298; color: white; }
         .table-custom tbody td { vertical-align: middle; font-size: 0.85rem; }
-        .btn-view { background-color: #17a2b8; color: white; font-size: 0.75rem; border-radius: 20px; padding: 5px 12px; text-decoration: none; }
-        .btn-view:hover { background-color: #138496; color: white; }
-        .loading-spinner { display: none; text-align: center; padding: 20px; }
+        .btn-view { background-color: #17a2b8; color: white; border: none; font-size: 0.75rem; border-radius: 20px; padding: 5px 15px; cursor: pointer; transition: 0.3s; }
+        .btn-view:hover { background-color: #138496; }
+        .loading-spinner { display: none; text-align: center; padding: 30px; }
+        #img-modal-target { width: 100%; border-radius: 8px; }
     </style>
 </head>
 <body>
 
 <div class="header-section text-center">
-    <h2>Validasi MAP DO IT ONLINE</h2>
-    <p class="mb-0">Panel Validasi Area Coordinator & Area Manager</p>
+    <h2>VALIDASI MAP DO IT ONLINE</h2>
+    <p class="mb-0 text-white-50">Area Coordinator & Manager Verification System</p>
 </div>
 
 <div class="container-fluid px-4">
@@ -30,15 +31,15 @@
             <div class="card p-4 mb-4">
                 <div class="row">
                     <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold">Nama Validator</label>
+                        <label class="form-label fw-bold small">NAMA VALIDATOR</label>
                         <input type="text" id="validator-name" class="form-control" placeholder="Nama AC / AM">
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold">Kode Toko</label>
+                        <label class="form-label fw-bold small">KODE TOKO</label>
                         <input type="text" id="store-code" class="form-control" placeholder="Contoh: SAM01">
                     </div>
                     <div class="col-md-4 mb-3">
-                        <label class="form-label fw-bold">Tanggal Validasi</label>
+                        <label class="form-label fw-bold small">TANGGAL VALIDASI</label>
                         <input type="date" id="validation-date" class="form-control">
                     </div>
                 </div>
@@ -47,7 +48,7 @@
             <div class="card p-0 mb-4 overflow-hidden">
                 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold text-primary">Data Temuan Lapangan</h5>
-                    <button class="btn btn-sm btn-outline-primary" onclick="loadData()">Refresh Data</button>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="loadData()">Refresh Data</button>
                 </div>
                 
                 <div class="table-responsive">
@@ -60,7 +61,7 @@
                                 <th>Rak</th>
                                 <th>Checklist Detail</th>
                                 <th>Bukti Foto</th>
-                                <th class="text-center" style="width: 150px;">Status Validasi</th>
+                                <th class="text-center">Status Validasi</th>
                             </tr>
                         </thead>
                         <tbody id="data-table-body">
@@ -69,31 +70,45 @@
 
                     <div id="loading" class="loading-spinner">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2">Mengambil data dari GSheet...</p>
+                        <p class="mt-2 text-muted">Sinkronisasi GSheet...</p>
                     </div>
                 </div>
             </div>
 
-            <div class="card p-4 mb-5 text-end">
-                <div class="row text-start mb-3">
-                    <div class="col-12">
-                        <label class="form-label fw-bold">Catatan Evaluasi Area</label>
-                        <textarea id="feedback-note" class="form-control" rows="3" placeholder="Berikan instruksi atau feedback untuk tim toko..."></textarea>
-                    </div>
+            <div class="card p-4 mb-5">
+                <label class="form-label fw-bold small">ACTION PLAN & FEEDBACK</label>
+                <textarea id="feedback-note" class="form-control mb-3" rows="3" placeholder="Instruksi perbaikan untuk toko..."></textarea>
+                <div class="text-end">
+                    <button type="button" class="btn btn-primary px-5 fw-bold" style="background-color: #1e3c72; border: none;">KIRIM HASIL VALIDASI</button>
                 </div>
-                <button type="button" id="submit-btn" class="btn btn-primary px-5 py-2 fw-bold" style="background-color: #1e3c72;">SIMPAN & KIRIM VALIDASI</button>
             </div>
 
         </div>
     </div>
 </div>
 
+<div class="modal fade" id="fotoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 bg-light">
+                <h6 class="modal-title fw-bold" id="fotoModalLabel">Preview Bukti Foto</h6>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-2 text-center">
+                <div id="loading-foto" class="py-5" style="display:none;">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                <img src="" id="img-modal-target" alt="Foto Temuan" style="display:none;">
+            </div>
+        </div>
+    </div>
+</div>
+
 <footer class="text-center text-muted mb-5">
-    <small>&copy; 2026 Operasional Samarinda - MAP DO IT System</small>
+    <small>&copy; 2026 MAP DO IT Samarinda System</small>
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="app.js"></script>
-
 </body>
 </html>
