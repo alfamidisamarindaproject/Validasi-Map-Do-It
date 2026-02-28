@@ -1,8 +1,8 @@
-// GANTI DENGAN URL WEB APP GSCRIPT ANDA
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwlJNuEDbHjf9QV-WBtAafjmgrK8lnffRDOvtabU_ZkCPrtdyWjcvlWK9Jaj0_HiCU/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwlJNuEDbHjf9QV-WBtAafjmgrK8lnffRDOvtabU_ZkCPrtdyWjcvlWK9Jaj0_HiCU/exec";
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
     loadData();
+    document.getElementById('refresh-btn').addEventListener('click', loadData);
 });
 
 function loadData() {
@@ -13,68 +13,68 @@ function loadData() {
     tableBody.innerHTML = '';
 
     fetch(SCRIPT_URL)
-        .then(response => response.json())
+        .then(res => res.json())
         .then(data => {
             loading.style.display = 'none';
-
             data.forEach(item => {
                 const row = document.createElement('tr');
                 
-                // Cek ketersediaan foto
-                let fotoBtn = `<span class="text-muted small italic">Tidak ada foto</span>`;
+                let fotoBtn = `<span class="text-muted small">No Photo</span>`;
                 if (item.foto && item.foto.includes('http')) {
+                    // Murni button, memanggil fungsi popup tanpa tag <a>
                     fotoBtn = `<button type="button" class="btn-view" onclick="bukaPopupFoto('${item.foto}')">Lihat Foto</button>`;
                 }
 
                 row.innerHTML = `
-                    <td class="text-muted">${item.timestamp}</td>
+                    <td class="small text-muted">${item.timestamp}</td>
                     <td><strong>${item.nama}</strong></td>
                     <td>${item.toko}</td>
-                    <td><span class="badge bg-secondary">${item.rak}</span></td>
-                    <td style="max-width: 250px;">${item.checklist}</td>
+                    <td><span class="badge bg-secondary rounded-pill">${item.rak}</span></td>
+                    <td class="text-wrap" style="min-width: 200px;">${item.checklist}</td>
                     <td>${fotoBtn}</td>
                     <td class="text-center">
-                        <select class="form-select form-select-sm border-primary" style="width: 130px; margin: 0 auto;">
-                            <option value="">-- Pilih --</option>
-                            <option value="APPROVE" class="text-success">APPROVE</option>
-                            <option value="REJECT" class="text-danger">REJECT</option>
+                        <select class="form-select form-select-sm select-status">
+                            <option value="">Pilih</option>
+                            <option value="APPROVE" class="text-success fw-bold">APPROVE</option>
+                            <option value="REJECT" class="text-danger fw-bold">REJECT</option>
                         </select>
                     </td>
                 `;
                 tableBody.appendChild(row);
             });
         })
-        .catch(error => {
+        .catch(err => {
             loading.style.display = 'none';
-            console.error('Fetch error:', error);
-            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Gagal memuat data GSheet. Pastikan URL Script benar.</td></tr>';
+            console.error("Fetch error:", err);
+            tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-4">Gagal memuat data GSheet.</td></tr>';
         });
 }
 
-// Logika Pop-up Modal Foto
-function bukaPopupFoto(urlFoto) {
+window.bukaPopupFoto = function(urlFoto) {
     const modalElement = document.getElementById('fotoModal');
-    const imgModalTarget = document.getElementById('img-modal-target');
+    const imgTarget = document.getElementById('img-modal-target');
     const loadingFoto = document.getElementById('loading-foto');
-    
-    const myModal = new bootstrap.Modal(modalElement);
-    
-    // Reset Modal
+    const modalInstance = new bootstrap.Modal(modalElement);
+
+    // Konversi Google Drive Link agar bisa tampil langsung di <img>
+    let directUrl = urlFoto;
+    if (urlFoto.includes('drive.google.com')) {
+        directUrl = urlFoto.replace("/view?usp=sharing", "").replace("file/d/", "uc?export=view&id=");
+    }
+
     loadingFoto.style.display = 'block';
-    imgModalTarget.style.display = 'none';
-    imgModalTarget.src = ''; 
+    imgTarget.style.display = 'none';
+    imgTarget.src = directUrl;
 
-    // Load Gambar
-    imgModalTarget.src = urlFoto;
-    myModal.show();
+    modalInstance.show();
 
-    imgModalTarget.onload = function() {
+    imgTarget.onload = () => {
         loadingFoto.style.display = 'none';
-        imgModalTarget.style.display = 'block';
+        imgTarget.style.display = 'block';
     };
 
-    imgModalTarget.onerror = function() {
+    imgTarget.onerror = () => {
         loadingFoto.style.display = 'none';
-        alert('Gagal memuat gambar. Pastikan izin akses file di Google Drive sudah "Anyone with the link".');
+        alert("Gambar tidak dapat dimuat. Pastikan izin sharing Google Drive sudah publik.");
     };
 }
