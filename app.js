@@ -1,4 +1,4 @@
-const URL_GSHEET = "https://script.google.com/macros/s/AKfycbz8jdul-sh4ElPZ4i1tHTB15dbvUfENQPnYJaC7p-__p176argqziNmiYx5PDomYUnu/exec";
+const URL_GSHEET = "https://script.google.com/macros/s/AKfycbxKwJfuqN5DCk9NsSoWRlsR2XWMCCHPRtvjojnPnpvZq9ziWNL5JhyCmGSrl4VFP4V3/exec";
 
 let localData = [];
 let updatesQueue = []; // Antrian data yang akan disubmit
