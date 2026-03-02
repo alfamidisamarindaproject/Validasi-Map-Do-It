@@ -3,63 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validator MAP DO IT - Pending List</title>
+    <title>Validator MAP DO IT</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; padding-bottom: 100px; }
-        .header-blue { background: #2a5298; color: white; padding: 30px 0 50px 0; border-radius: 0 0 20px 20px; }
-        .filter-card { border: none; border-radius: 12px; margin-top: -30px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .table-container { background: white; border-radius: 12px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .checklist-item { font-size: 0.75rem; display: flex; justify-content: space-between; border-bottom: 1px solid #f8f9fa; }
-        
-        /* Floating Submit Button */
-        .submit-container {
-            position: fixed; bottom: 20px; right: 20px; z-index: 1000;
-            background: white; padding: 15px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
-        
-        #loading-overlay { 
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: rgba(255,255,255,0.8); z-index: 2000; justify-content: center; align-items: center; 
-        }
-        .cb-ok { accent-color: #198754; transform: scale(1.4); }
-        .cb-nok { accent-color: #dc3545; transform: scale(1.4); }
+        body { background-color: #f8f9fa; padding-bottom: 120px; font-family: 'Segoe UI', sans-serif; }
+        .header-blue { background: #2a5298; color: white; padding: 40px 0 60px 0; border-radius: 0 0 20px 20px; }
+        .filter-card { border: none; border-radius: 12px; margin-top: -45px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .table-container { background: white; border-radius: 12px; margin-top: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .checklist-box { background: #fdfdfd; border: 1px solid #eee; border-radius: 6px; padding: 5px; min-width: 140px; }
+        .checklist-item { font-size: 0.7rem; display: flex; justify-content: space-between; border-bottom: 1px dotted #ddd; }
+        .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; background: white; padding: 20px; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 1000; display: none; }
+        .cb-ok { accent-color: #198754; transform: scale(1.5); cursor: pointer; }
+        .cb-nok { accent-color: #dc3545; transform: scale(1.5); cursor: pointer; }
+        #loader { display: none; text-align: center; padding: 50px; }
     </style>
 </head>
 <body>
 
-<div id="loading-overlay" class="flex-column">
-    <div class="spinner-border text-primary"></div>
-    <div class="mt-2 fw-bold">Sedang memproses...</div>
-</div>
-
 <div class="header-blue text-center">
     <h2 class="fw-bold">VALIDASI MAP DO IT</h2>
-    <p class="opacity-75">Daftar Pekerjaan Belum Divalidasi</p>
+    <p class="opacity-75">Panel Area Manager & Area Coordinator</p>
 </div>
 
 <div class="container-fluid px-4">
     <div class="card filter-card p-4">
-        <div class="row g-3 align-items-end">
+        <div class="row g-3">
             <div class="col-md-3">
                 <label class="small fw-bold text-muted mb-1">CARI NAMA</label>
-                <input type="text" id="inputNama" class="form-control" placeholder="Nama personil...">
+                <input type="text" id="inputNama" class="form-control" placeholder="Ketik nama...">
             </div>
             <div class="col-md-3">
                 <label class="small fw-bold text-muted mb-1">KODE TOKO</label>
-                <input type="text" id="inputToko" class="form-control" placeholder="Kode Toko...">
+                <input type="text" id="inputToko" class="form-control" placeholder="Contoh: SAM01">
             </div>
             <div class="col-md-3">
                 <label class="small fw-bold text-muted mb-1">TANGGAL</label>
                 <input type="date" id="inputTanggal" class="form-control">
             </div>
-            <div class="col-md-3">
-                <button class="btn btn-outline-primary w-100 fw-bold" onclick="fetchData()">🔄 REFRESH</button>
+            <div class="col-md-3 d-flex align-items-end">
+                <button class="btn btn-primary w-100 fw-bold shadow-sm" onclick="fetchData()">🔄 REFRESH DATA</button>
             </div>
         </div>
     </div>
 
-    <div class="table-container mb-5">
+    <div class="table-container">
+        <div id="loader">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-2 fw-bold text-secondary">Sedang mengambil data terbaru...</p>
+        </div>
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-light">
@@ -68,21 +59,24 @@
                         <th>Nama</th>
                         <th>Toko</th>
                         <th>Rak</th>
-                        <th width="160">Checklist</th>
+                        <th>Checklist</th>
                         <th>Foto</th>
-                        <th class="text-center">Aksi Validasi</th>
+                        <th class="text-center">Validasi (OK/NOK)</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody"></tbody>
+                <tbody id="tableBody">
+                    <tr><td colspan="7" class="text-center py-5 text-muted">Data akan muncul otomatis setelah memuat...</td></tr>
+                </tbody>
             </table>
         </div>
     </div>
 </div>
 
-<div class="submit-container">
-    <button class="btn btn-success btn-lg px-5 rounded-pill fw-bold shadow" onclick="submitValidasi()">
-        ✅ SIMPAN VALIDASI (<span id="countUpdate">0</span>)
-    </button>
+<div class="submit-bar" id="submitBar">
+    <div class="container d-flex justify-content-between align-items-center">
+        <div class="fw-bold text-primary"><span id="countSelected">0</span> Data Terpilih</div>
+        <button class="btn btn-success px-5 fw-bold rounded-pill shadow" onclick="kirimData()">✅ SUBMIT VALIDASI</button>
+    </div>
 </div>
 
 <script src="app.js"></script>
