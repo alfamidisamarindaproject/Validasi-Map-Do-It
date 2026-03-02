@@ -3,27 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validasi MAP DO IT</title>
+    <title>Validator MAP DO IT - Pending List</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background-color: #f4f7f6; font-family: 'Segoe UI', sans-serif; }
-        .header-blue { background: #2a5298; color: white; padding: 40px 0 60px 0; border-radius: 0 0 20px 20px; }
-        .filter-card { border: none; border-radius: 12px; margin-top: -40px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
-        .table-container { background: white; border-radius: 12px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
-        .table thead { border-bottom: 2px solid #eee; }
-        .table th { font-size: 0.85rem; color: #333; padding: 15px; }
-        .btn-refresh { background: #007bff; border: none; font-weight: bold; }
-        .checklist-item { font-size: 0.75rem; display: flex; justify-content: space-between; border-bottom: 1px solid #f8f9fa; padding: 2px 0; }
-        .status-ok { accent-color: #198754; transform: scale(1.3); }
-        .status-nok { accent-color: #dc3545; transform: scale(1.3); }
-        #loading-state { display: none; padding: 50px; text-align: center; }
+        body { background-color: #f4f7f6; padding-bottom: 100px; }
+        .header-blue { background: #2a5298; color: white; padding: 30px 0 50px 0; border-radius: 0 0 20px 20px; }
+        .filter-card { border: none; border-radius: 12px; margin-top: -30px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); }
+        .table-container { background: white; border-radius: 12px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .checklist-item { font-size: 0.75rem; display: flex; justify-content: space-between; border-bottom: 1px solid #f8f9fa; }
+        
+        /* Floating Submit Button */
+        .submit-container {
+            position: fixed; bottom: 20px; right: 20px; z-index: 1000;
+            background: white; padding: 15px; border-radius: 50px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        #loading-overlay { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(255,255,255,0.8); z-index: 2000; justify-content: center; align-items: center; 
+        }
+        .cb-ok { accent-color: #198754; transform: scale(1.4); }
+        .cb-nok { accent-color: #dc3545; transform: scale(1.4); }
     </style>
 </head>
 <body>
 
+<div id="loading-overlay" class="flex-column">
+    <div class="spinner-border text-primary"></div>
+    <div class="mt-2 fw-bold">Sedang memproses...</div>
+</div>
+
 <div class="header-blue text-center">
     <h2 class="fw-bold">VALIDASI MAP DO IT</h2>
-    <p class="opacity-75">Panel Area Manager & Area Coordinator</p>
+    <p class="opacity-75">Daftar Pekerjaan Belum Divalidasi</p>
 </div>
 
 <div class="container-fluid px-4">
@@ -31,30 +43,26 @@
         <div class="row g-3 align-items-end">
             <div class="col-md-3">
                 <label class="small fw-bold text-muted mb-1">CARI NAMA</label>
-                <input type="text" id="inputNama" class="form-control" placeholder="Ketik nama...">
+                <input type="text" id="inputNama" class="form-control" placeholder="Nama personil...">
             </div>
             <div class="col-md-3">
                 <label class="small fw-bold text-muted mb-1">KODE TOKO</label>
-                <input type="text" id="inputToko" class="form-control" placeholder="Contoh: SAM01">
+                <input type="text" id="inputToko" class="form-control" placeholder="Kode Toko...">
             </div>
             <div class="col-md-3">
                 <label class="small fw-bold text-muted mb-1">TANGGAL</label>
                 <input type="date" id="inputTanggal" class="form-control">
             </div>
             <div class="col-md-3">
-                <button class="btn btn-primary btn-refresh w-100 py-2" onclick="fetchData()">🔄 REFRESH DATA</button>
+                <button class="btn btn-outline-primary w-100 fw-bold" onclick="fetchData()">🔄 REFRESH</button>
             </div>
         </div>
     </div>
 
-    <div class="table-container">
-        <div id="loading-state">
-            <div class="spinner-border text-primary"></div>
-            <p class="mt-2 fw-bold text-muted">Memuat data dari GSheet...</p>
-        </div>
+    <div class="table-container mb-5">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
-                <thead>
+                <thead class="table-light">
                     <tr>
                         <th>Waktu</th>
                         <th>Nama</th>
@@ -62,15 +70,19 @@
                         <th>Rak</th>
                         <th width="160">Checklist</th>
                         <th>Foto</th>
-                        <th class="text-center">Validasi (OK / NOK)</th>
+                        <th class="text-center">Aksi Validasi</th>
                     </tr>
                 </thead>
-                <tbody id="tableBody">
-                    <tr><td colspan="7" class="text-center py-5 text-muted">Klik Refresh untuk memuat data...</td></tr>
-                </tbody>
+                <tbody id="tableBody"></tbody>
             </table>
         </div>
     </div>
+</div>
+
+<div class="submit-container">
+    <button class="btn btn-success btn-lg px-5 rounded-pill fw-bold shadow" onclick="submitValidasi()">
+        ✅ SIMPAN VALIDASI (<span id="countUpdate">0</span>)
+    </button>
 </div>
 
 <script src="app.js"></script>
