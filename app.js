@@ -1,4 +1,4 @@
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbz8jdul-sh4ElPZ4i1tHTB15dbvUfENQPnYJaC7p-__p176argqziNmiYx5PDomYUnu/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxfbhf3FqnbLdIDdSTxNduCzMdqq5Gw0dfvGJAiKj-b0LUec7Ups_9pJO6rqbBJpJZV/exec";
 
 let allDataRaw = [];
 let queue = [];
@@ -7,17 +7,15 @@ window.onload = fetchData;
 
 async function fetchData() {
     toggleLoading(true);
-    const tbody = document.getElementById('tableBody');
     queue = [];
     updateSubmitBar();
-
     try {
         const response = await fetch(URL_WEB_APP);
-        const result = await response.json();
-        allDataRaw = Array.isArray(result) ? result : [];
+        const data = await response.json();
+        allDataRaw = Array.isArray(data) ? data : [];
         renderTable(allDataRaw);
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-5">Gagal mengambil data. Cek Deployment Apps Script Anda.</td></tr>';
+        document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-5">Gagal terhubung ke GSheet. Pastikan URL sudah benar.</td></tr>';
     } finally {
         toggleLoading(false);
     }
@@ -27,8 +25,8 @@ function renderTable(data) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
 
-    if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">✅ Tidak ada tugas validasi saat ini.</td></tr>';
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">Semua data sudah divalidasi. ✅</td></tr>';
         return;
     }
 
@@ -36,10 +34,10 @@ function renderTable(data) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td class="small text-muted">${item.timestamp}</td>
-            <td class="fw-bold">${item.nama}</td>
-            <td><span class="badge bg-light text-primary border">${item.toko}</span></td>
+            <td class="fw-bold text-dark">${item.nama}</td>
+            <td><span class="badge bg-light text-primary border border-primary">${item.toko}</span></td>
             <td>${item.rak}</td>
-            <td>${parseChecklistPipe(item.checklist)}</td>
+            <td>${parseChecklist(item.checklist)}</td>
             <td><button class="btn btn-sm btn-dark px-3 fw-bold shadow-sm" onclick="bukaPopup('${item.foto}')">Lihat Foto</button></td>
             <td class="text-center">
                 <div class="d-flex justify-content-center gap-4">
@@ -58,45 +56,42 @@ function renderTable(data) {
     });
 }
 
-/**
- * FUNGSI LOGIKA BARU: Membaca format "PLANOGRAM OK | LABEL PRICE OK | dst"
- */
-function parseChecklistPipe(txt) {
-    if (!txt) return '<span class="text-muted small">Data Kosong</span>';
+function parseChecklist(txt) {
+    if (!txt) return '<span class="text-muted">Data Kosong</span>';
     
-    // Daftar kategori yang dicari
+    // Mapping kategori sesuai permintaan
     const categories = [
         { key: "PLANOGRAM", label: "Planogram" },
         { key: "LABEL PRICE", label: "Label Price" },
-        { key: "EXP CHECKED", label: "Exp Checked" },
-        { key: "CLEANING", label: "Cleaning" }
+        { key: "EXP CHECKED", label: "Expired Check" },
+        { key: "CLEANING", label: "Kebersihan Rak" }
     ];
 
     let html = '<div class="checklist-box">';
-    
     categories.forEach(cat => {
-        // RegEx mencari kata Kunci + Spasi + OK
-        // Contoh: PLANOGRAM OK
+        // Mencari teks "OK" setelah kata kunci kategori
         const regex = new RegExp(`${cat.key}\\s+OK`, 'i');
         const isOK = regex.test(txt);
         
         html += `
             <div class="checklist-item">
-                <span class="fw-bold text-dark" style="font-size:0.7rem;">${cat.label}</span>
-                <span class="badge-status ${isOK ? 'badge-ok' : 'badge-nok'}">
+                <span class="fw-bold">${cat.label}</span>
+                <span class="status-pill ${isOK ? 'status-ok' : 'status-nok'}">
                     ${isOK ? '✔ OK' : '✖ NOK'}
                 </span>
             </div>`;
     });
-    
     return html + '</div>';
 }
 
 function handleQueue(rowId, status, el) {
     const rowGroup = document.getElementsByName(`row-${rowId}`);
     rowGroup.forEach(cb => { if(cb !== el) cb.checked = false; });
+    
     queue = queue.filter(q => q.row !== rowId);
-    if (el.checked) { queue.push({ row: rowId, status: status }); }
+    if (el.checked) {
+        queue.push({ row: rowId, status: status });
+    }
     updateSubmitBar();
 }
 
@@ -107,26 +102,28 @@ function updateSubmitBar() {
 }
 
 async function kirimData() {
-    if (!confirm(`Kirim ${queue.length} validasi?`)) return;
+    if (!confirm(`Simpan validasi untuk ${queue.length} data?`)) return;
     toggleLoading(true);
     try {
-        await fetch(URL_WEB_APP, {
+        const response = await fetch(URL_WEB_APP, {
             method: 'POST',
             mode: 'no-cors',
             body: JSON.stringify(queue)
         });
+        
+        // Mode no-cors tidak mengembalikan response, kita berasumsi sukses jika tidak error
         setTimeout(() => {
-            alert("Berhasil disubmit!");
+            alert("Data Berhasil Divalidasi & Masuk ke GSheet!");
             fetchData();
-        }, 1200);
+        }, 1500);
     } catch (e) {
-        alert("Gagal kirim!");
+        alert("Gagal mengirim data!");
         toggleLoading(false);
     }
 }
 
 function bukaPopup(url) {
-    if(!url || url.length < 10) return alert("Foto tidak ada");
+    if(!url || url.length < 10) return alert("Foto tidak ada!");
     const modalEl = document.getElementById('modalFoto');
     const imgEl = document.getElementById('frameFoto');
     const loadEl = document.getElementById('loadingGambar');
@@ -152,12 +149,12 @@ function toggleLoading(show) {
     document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
 }
 
-// Filter Pencarian
-document.getElementById('inputNama').oninput = filter;
-document.getElementById('inputToko').oninput = filter;
-document.getElementById('inputTanggal').onchange = filter;
+// Filter Pencarian Real-time
+document.getElementById('inputNama').oninput = runFilter;
+document.getElementById('inputToko').oninput = runFilter;
+document.getElementById('inputTanggal').onchange = runFilter;
 
-function filter() {
+function runFilter() {
     const n = document.getElementById('inputNama').value.toLowerCase();
     const t = document.getElementById('inputToko').value.toLowerCase();
     const d = document.getElementById('inputTanggal').value;
