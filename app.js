@@ -3,7 +3,6 @@ const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbz8jdul-sh4ElPZ4i1t
 let allDataRaw = [];
 let queue = [];
 
-// Fungsi saat halaman dimuat
 window.onload = function() {
     fetchData();
 };
@@ -11,18 +10,19 @@ window.onload = function() {
 async function fetchData() {
     toggleLoading(true);
     const tbody = document.getElementById('tableBody');
-    queue = []; // Reset antrian
+    queue = [];
     updateSubmitBar();
 
     try {
         const response = await fetch(URL_WEB_APP);
-        if (!response.ok) throw new Error("Network response was not ok");
+        const result = await response.json();
         
-        allDataRaw = await response.json();
+        // Pastikan result adalah array
+        allDataRaw = Array.isArray(result) ? result : [];
         renderTable(allDataRaw);
     } catch (err) {
-        console.error(err);
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-5">Gagal memuat data. Pastikan URL Apps Script benar dan sudah di-Deploy sebagai "Anyone".</td></tr>';
+        console.error("Fetch Error:", err);
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-5">Gagal memuat data. Periksa koneksi internet atau URL script.</td></tr>';
     } finally {
         toggleLoading(false);
     }
@@ -32,8 +32,8 @@ function renderTable(data) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
 
-    if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">Tidak ada data pending. Semua sudah divalidasi! ✅</td></tr>';
+    if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">✅ Tidak ada data yang perlu divalidasi.</td></tr>';
         return;
     }
 
@@ -42,25 +42,48 @@ function renderTable(data) {
         row.innerHTML = `
             <td class="small text-muted">${item.timestamp}</td>
             <td class="fw-bold">${item.nama}</td>
-            <td><span class="badge bg-light text-primary border border-primary">${item.toko}</span></td>
+            <td><span class="badge bg-light text-primary border">${item.toko}</span></td>
             <td>${item.rak}</td>
             <td>${formatChecklist(item.checklist)}</td>
-            <td><button class="btn btn-sm btn-outline-info fw-bold" onclick="bukaPopup('${item.foto}')">🖼️ LIHAT</button></td>
+            <td><button class="btn btn-sm btn-dark fw-bold" onclick="bukaPopup('${item.foto}')">🖼️ FOTO</button></td>
             <td class="text-center">
                 <div class="d-flex justify-content-center gap-4">
                     <div class="text-center">
                         <input type="checkbox" class="cb-ok" name="row-${item.row}" onclick="handleQueue(${item.row}, 'OK', this)">
-                        <div class="small fw-bold text-success mt-1" style="font-size:0.6rem">OK</div>
+                        <div class="small fw-bold text-success mt-1">OK</div>
                     </div>
                     <div class="text-center">
                         <input type="checkbox" class="cb-nok" name="row-${item.row}" onclick="handleQueue(${item.row}, 'NOK', this)">
-                        <div class="small fw-bold text-danger mt-1" style="font-size:0.6rem">NOK</div>
+                        <div class="small fw-bold text-danger mt-1">NOK</div>
                     </div>
                 </div>
             </td>
         `;
         tbody.appendChild(row);
     });
+}
+
+function formatChecklist(txt) {
+    if (!txt) return '<span class="text-muted small">Kosong</span>';
+    
+    const items = ["Plano", "Label Price", "Display", "Kebersihan"];
+    let html = '<div class="checklist-box">';
+    
+    items.forEach(k => {
+        // Logika pencarian status: mencari kata kunci "Ya", "OK", "Ada", atau simbol centang di dekat nama kategori
+        const regex = new RegExp(`${k}.{0,15}(ada|ya|ok|v|lengkap|bersih|\\✔)`, 'i');
+        const isOK = regex.test(txt);
+        
+        html += `
+            <div class="checklist-item">
+                <span class="fw-semibold">${k}</span>
+                <span class="status-badge ${isOK ? 'bg-ok' : 'bg-nok'}">
+                    ${isOK ? '✔ OK' : '✖ NOK'}
+                </span>
+            </div>`;
+    });
+    
+    return html + '</div>';
 }
 
 function handleQueue(rowId, status, el) {
@@ -82,30 +105,26 @@ function updateSubmitBar() {
 }
 
 async function kirimData() {
-    if (!confirm(`Kirim ${queue.length} validasi sekarang?`)) return;
-    
+    if (!confirm(`Simpan ${queue.length} validasi? Data akan dipindahkan ke riwayat.`)) return;
     toggleLoading(true);
-    
     try {
         await fetch(URL_WEB_APP, {
             method: 'POST',
             mode: 'no-cors',
             body: JSON.stringify(queue)
         });
-        
-        // Beri jeda 1 detik agar GSheet selesai memproses sebelum refresh
         setTimeout(() => {
-            alert("Validasi Berhasil Disimpan!");
+            alert("Validasi Berhasil!");
             fetchData();
         }, 1200);
     } catch (e) {
-        alert("Gagal mengirim data!");
+        alert("Gagal kirim data!");
         toggleLoading(false);
     }
 }
 
 function bukaPopup(url) {
-    if(!url || url === "" || url === "#") return alert("Foto tidak ditemukan!");
+    if(!url || url.length < 10) return alert("Foto tidak tersedia");
     const modalEl = document.getElementById('modalFoto');
     const imgEl = document.getElementById('frameFoto');
     const loadEl = document.getElementById('loadingGambar');
@@ -128,24 +147,12 @@ function bukaPopup(url) {
     };
 }
 
-function formatChecklist(txt) {
-    const items = ["Plano", "Label Price", "Display", "Kebersihan"];
-    let html = '<div class="checklist-box">';
-    items.forEach(k => {
-        const ok = new RegExp(`${k}.*(ada|ya|ok|v|lengkap)`, 'i').test(txt);
-        html += `<div class="checklist-item"><span>${k}</span><span style="color:${ok?'green':'red'}">${ok?'✔':'✖'}</span></div>`;
-    });
-    return html + '</div>';
-}
-
 function toggleLoading(show) {
     const loader = document.getElementById('loading-overlay');
-    if (loader) {
-        loader.style.display = show ? 'flex' : 'none';
-    }
+    if (loader) loader.style.display = show ? 'flex' : 'none';
 }
 
-// Filter Logic
+// Filter 
 document.getElementById('inputNama').oninput = applyFilter;
 document.getElementById('inputToko').oninput = applyFilter;
 document.getElementById('inputTanggal').onchange = applyFilter;
@@ -154,11 +161,10 @@ function applyFilter() {
     const n = document.getElementById('inputNama').value.toLowerCase();
     const t = document.getElementById('inputToko').value.toLowerCase();
     const d = document.getElementById('inputTanggal').value;
-    
     const filtered = allDataRaw.filter(i => {
         return i.nama.toLowerCase().includes(n) && 
                i.toko.toLowerCase().includes(t) && 
-               (d === "" || i.timestamp.startsWith(d));
+               (d === "" || i.timestamp.includes(d));
     });
     renderTable(filtered);
 }
