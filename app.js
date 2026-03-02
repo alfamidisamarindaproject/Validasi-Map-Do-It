@@ -1,31 +1,34 @@
 const URL_GSHEET = "https://script.google.com/macros/s/AKfycbz8jdul-sh4ElPZ4i1tHTB15dbvUfENQPnYJaC7p-__p176argqziNmiYx5PDomYUnu/exec";
 
-let database = [];
+let localData = [];
 
-// Event listeners untuk filter real-time
-document.getElementById('filterNama').addEventListener('input', runFilter);
-document.getElementById('filterToko').addEventListener('input', runFilter);
-document.getElementById('filterTanggal').addEventListener('change', runFilter);
+// Load data otomatis saat halaman dibuka
+window.onload = fetchData;
 
-async function loadData() {
-    showLoading(true);
+async function fetchData() {
+    const tableBody = document.getElementById('tableBody');
+    const loader = document.getElementById('loading-state');
+    
+    tableBody.innerHTML = '';
+    loader.style.display = 'block';
+
     try {
         const response = await fetch(URL_GSHEET);
-        database = await response.json();
-        renderTable(database);
+        localData = await response.json();
+        renderTable(localData);
     } catch (err) {
-        alert("Gagal memuat data dari Google Sheets!");
+        tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Gagal memuat data. Periksa URL Apps Script Anda.</td></tr>`;
     } finally {
-        showLoading(false);
+        loader.style.display = 'none';
     }
 }
 
 function renderTable(data) {
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '';
+    const tableBody = document.getElementById('tableBody');
+    tableBody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Data tidak ditemukan.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-5">Data tidak ditemukan.</td></tr>';
         return;
     }
 
@@ -35,91 +38,72 @@ function renderTable(data) {
         const isNOK = item.validasi === "NOK" ? "checked" : "";
 
         row.innerHTML = `
-            <td class="small text-muted">${item.timestamp.split('T')[0]}</td>
+            <td class="small text-muted">${item.timestamp.toString().split('T')[0]}</td>
             <td class="fw-bold">${item.nama}</td>
             <td><span class="badge bg-light text-primary border border-primary">${item.toko}</span></td>
             <td>${item.rak}</td>
-            <td>${createChecklist(item.checklist)}</td>
-            <td><button class="btn-view" onclick="zoomFoto('${item.foto}')">Lihat</button></td>
+            <td>${formatChecklist(item.checklist)}</td>
+            <td><button class="btn btn-sm btn-outline-info" onclick="window.open('${item.foto}', '_blank')">Lihat Foto</button></td>
             <td class="text-center">
-                <div class="d-flex justify-content-center gap-4">
+                <div class="d-flex justify-content-center gap-3">
                     <div class="text-center">
-                        <input type="checkbox" class="status-ok" name="v-${item.row}" ${isOK} onclick="submitValidasi(${item.row}, 'OK', this)">
-                        <div class="small fw-bold text-success">OK</div>
+                        <input type="checkbox" class="status-ok" name="v-${item.row}" ${isOK} onclick="updateValidasi(${item.row}, 'OK', this)">
+                        <div class="small fw-bold text-success" style="font-size:0.6rem">OK</div>
                     </div>
                     <div class="text-center">
-                        <input type="checkbox" class="status-nok" name="v-${item.row}" ${isNOK} onclick="submitValidasi(${item.row}, 'NOK', this)">
-                        <div class="small fw-bold text-danger">NOK</div>
+                        <input type="checkbox" class="status-nok" name="v-${item.row}" ${isNOK} onclick="updateValidasi(${item.row}, 'NOK', this)">
+                        <div class="small fw-bold text-danger" style="font-size:0.6rem">NOK</div>
                     </div>
                 </div>
             </td>
         `;
-        tbody.appendChild(row);
+        tableBody.appendChild(row);
     });
 }
 
-function runFilter() {
-    const n = document.getElementById('filterNama').value.toLowerCase();
-    const t = document.getElementById('filterToko').value.toLowerCase();
-    const d = document.getElementById('filterTanggal').value;
-
-    const filtered = database.filter(i => {
-        return i.nama.toLowerCase().includes(n) && 
-               i.toko.toLowerCase().includes(t) && 
-               (d === "" || i.timestamp.startsWith(d));
+function formatChecklist(text) {
+    const keys = ["Plano", "Label Price", "Display", "Kebersihan"];
+    let html = '<div class="checklist-box">';
+    keys.forEach(k => {
+        const ok = new RegExp(`${k}.*(ada|ya|ok|v|lengkap)`, 'i').test(text);
+        html += `<div class="checklist-item"><span>${k}</span><span style="color:${ok?'green':'red'}">${ok?'✔':'✖'}</span></div>`;
     });
-    renderTable(filtered);
+    return html + '</div>';
 }
 
-async function submitValidasi(rowNumber, status, el) {
-    // Matikan checkbox pasangannya
-    const group = document.getElementsByName(`v-${rowNumber}`);
+async function updateValidasi(row, status, el) {
+    // Matikan checkbox lainnya di baris yang sama
+    const group = document.getElementsByName(`v-${row}`);
     group.forEach(cb => { if(cb !== el) cb.checked = false; });
 
-    const finalValue = el.checked ? status : ""; // Kosongkan jika uncheck
+    const finalValue = el.checked ? status : "";
 
     try {
-        // Mengirim data menggunakan mode no-cors agar tidak terhalang kebijakan redirect Google
         await fetch(URL_GSHEET, {
             method: 'POST',
             mode: 'no-cors',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ row: rowNumber, status: finalValue })
+            body: JSON.stringify({ row: row, status: finalValue })
         });
-        console.log("Update Berhasil");
+        console.log("Update sent for row " + row);
     } catch (e) {
-        alert("Gagal mengirim validasi!");
+        alert("Gagal mengupdate status ke GSheet");
     }
 }
 
-function createChecklist(text) {
-    const keys = ["Plano", "Label Price", "Display", "Kebersihan"];
-    let ui = '<div style="background: #f9f9f9; padding: 5px; border-radius: 5px;">';
-    keys.forEach(k => {
-        const ok = new RegExp(`${k}.*(ada|ya|ok|v|lengkap)`, 'i').test(text);
-        ui += `<div class="checklist-item">
-                <span>${k}</span>
-                <span style="color:${ok?'green':'red'}">${ok?'✔':'✖'}</span>
-               </div>`;
+// Filter Pencarian
+document.getElementById('inputNama').oninput = applyFilters;
+document.getElementById('inputToko').oninput = applyFilters;
+document.getElementById('inputTanggal').onchange = applyFilters;
+
+function applyFilters() {
+    const n = document.getElementById('inputNama').value.toLowerCase();
+    const t = document.getElementById('inputToko').value.toLowerCase();
+    const d = document.getElementById('inputTanggal').value;
+
+    const filtered = localData.filter(i => {
+        return i.nama.toLowerCase().includes(n) && 
+               i.toko.toLowerCase().includes(t) && 
+               (d === "" || i.timestamp.toString().startsWith(d));
     });
-    return ui + '</div>';
+    renderTable(filtered);
 }
-
-function zoomFoto(url) {
-    if(!url || !url.includes('http')) return alert("Foto tidak tersedia");
-    const modal = new bootstrap.Modal(document.getElementById('fotoModal'));
-    let dUrl = url;
-    if (url.includes('drive.google.com')) {
-        const id = url.split('/d/')[1]?.split('/')[0] || url.split('id=')[1]?.split('&')[0];
-        dUrl = `https://drive.google.com/thumbnail?id=${id}&sz=w800`;
-    }
-    document.getElementById('imgPreview').src = dUrl;
-    modal.show();
-}
-
-function showLoading(show) {
-    document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
-}
-
-// Jalankan load data saat halaman siap
-window.onload = loadData;
