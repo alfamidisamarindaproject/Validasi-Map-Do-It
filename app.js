@@ -3,22 +3,26 @@ const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbz8jdul-sh4ElPZ4i1t
 let allDataRaw = [];
 let queue = [];
 
-// Jalankan otomatis
-window.onload = fetchData;
+// Fungsi saat halaman dimuat
+window.onload = function() {
+    fetchData();
+};
 
 async function fetchData() {
     toggleLoading(true);
     const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5">Mengambil data terbaru...</td></tr>';
-    queue = [];
+    queue = []; // Reset antrian
     updateSubmitBar();
 
     try {
         const response = await fetch(URL_WEB_APP);
+        if (!response.ok) throw new Error("Network response was not ok");
+        
         allDataRaw = await response.json();
         renderTable(allDataRaw);
     } catch (err) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Gagal memuat data!</td></tr>';
+        console.error(err);
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger py-5">Gagal memuat data. Pastikan URL Apps Script benar dan sudah di-Deploy sebagai "Anyone".</td></tr>';
     } finally {
         toggleLoading(false);
     }
@@ -29,7 +33,7 @@ function renderTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">Semua data sudah divalidasi! ✅</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">Tidak ada data pending. Semua sudah divalidasi! ✅</td></tr>';
         return;
     }
 
@@ -41,7 +45,7 @@ function renderTable(data) {
             <td><span class="badge bg-light text-primary border border-primary">${item.toko}</span></td>
             <td>${item.rak}</td>
             <td>${formatChecklist(item.checklist)}</td>
-            <td><button class="btn btn-sm btn-outline-info fw-bold px-3" onclick="bukaPopup('${item.foto}')">🖼️ LIHAT</button></td>
+            <td><button class="btn btn-sm btn-outline-info fw-bold" onclick="bukaPopup('${item.foto}')">🖼️ LIHAT</button></td>
             <td class="text-center">
                 <div class="d-flex justify-content-center gap-4">
                     <div class="text-center">
@@ -72,12 +76,14 @@ function handleQueue(rowId, status, el) {
 
 function updateSubmitBar() {
     const bar = document.getElementById('submitBar');
-    document.getElementById('countSelected').innerText = queue.length;
-    bar.style.display = queue.length > 0 ? 'block' : 'none';
+    const displayCount = document.getElementById('countSelected');
+    if(displayCount) displayCount.innerText = queue.length;
+    if(bar) bar.style.display = queue.length > 0 ? 'block' : 'none';
 }
 
 async function kirimData() {
-    if (!confirm(`Submit ${queue.length} validasi? Data akan hilang dari daftar.`)) return;
+    if (!confirm(`Kirim ${queue.length} validasi sekarang?`)) return;
+    
     toggleLoading(true);
     
     try {
@@ -87,18 +93,19 @@ async function kirimData() {
             body: JSON.stringify(queue)
         });
         
+        // Beri jeda 1 detik agar GSheet selesai memproses sebelum refresh
         setTimeout(() => {
-            alert("Data Berhasil Divalidasi!");
+            alert("Validasi Berhasil Disimpan!");
             fetchData();
-        }, 1000);
+        }, 1200);
     } catch (e) {
-        alert("Gagal kirim data!");
+        alert("Gagal mengirim data!");
         toggleLoading(false);
     }
 }
 
 function bukaPopup(url) {
-    if(!url || url === "" || url === "#") return alert("Foto tidak ada!");
+    if(!url || url === "" || url === "#") return alert("Foto tidak ditemukan!");
     const modalEl = document.getElementById('modalFoto');
     const imgEl = document.getElementById('frameFoto');
     const loadEl = document.getElementById('loadingGambar');
@@ -118,7 +125,7 @@ function bukaPopup(url) {
     imgEl.onload = () => {
         loadEl.style.display = 'none';
         imgEl.style.display = 'inline-block';
-    }
+    };
 }
 
 function formatChecklist(txt) {
@@ -132,22 +139,26 @@ function formatChecklist(txt) {
 }
 
 function toggleLoading(show) {
-    document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+    const loader = document.getElementById('loading-overlay');
+    if (loader) {
+        loader.style.display = show ? 'flex' : 'none';
+    }
 }
 
-// Filter
-document.getElementById('inputNama').oninput = filter;
-document.getElementById('inputToko').oninput = filter;
-document.getElementById('inputTanggal').onchange = filter;
+// Filter Logic
+document.getElementById('inputNama').oninput = applyFilter;
+document.getElementById('inputToko').oninput = applyFilter;
+document.getElementById('inputTanggal').onchange = applyFilter;
 
-function filter() {
+function applyFilter() {
     const n = document.getElementById('inputNama').value.toLowerCase();
     const t = document.getElementById('inputToko').value.toLowerCase();
     const d = document.getElementById('inputTanggal').value;
-    const f = allDataRaw.filter(i => {
+    
+    const filtered = allDataRaw.filter(i => {
         return i.nama.toLowerCase().includes(n) && 
                i.toko.toLowerCase().includes(t) && 
                (d === "" || i.timestamp.startsWith(d));
     });
-    renderTable(f);
+    renderTable(filtered);
 }
