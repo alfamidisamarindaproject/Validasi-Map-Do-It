@@ -3,15 +3,13 @@ const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbz8jdul-sh4ElPZ4i1t
 let allDataRaw = [];
 let queue = [];
 
-// Langsung jalankan saat halaman dibuka
+// Jalankan otomatis
 window.onload = fetchData;
 
 async function fetchData() {
-    const tableBody = document.getElementById('tableBody');
-    const loader = document.getElementById('loader');
-    
-    loader.style.display = 'block';
-    tableBody.innerHTML = '';
+    toggleLoading(true);
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5">Mengambil data terbaru...</td></tr>';
     queue = [];
     updateSubmitBar();
 
@@ -20,19 +18,18 @@ async function fetchData() {
         allDataRaw = await response.json();
         renderTable(allDataRaw);
     } catch (err) {
-        console.error(err);
-        tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-5">Gagal terhubung ke server. Pastikan URL sudah benar.</td></tr>`;
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Gagal memuat data!</td></tr>';
     } finally {
-        loader.style.display = 'none';
+        toggleLoading(false);
     }
 }
 
 function renderTable(data) {
-    const tableBody = document.getElementById('tableBody');
-    tableBody.innerHTML = '';
+    const tbody = document.getElementById('tableBody');
+    tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">Tidak ada data pending. Semua sudah divalidasi! ✅</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">Semua data sudah divalidasi! ✅</td></tr>';
         return;
     }
 
@@ -44,7 +41,7 @@ function renderTable(data) {
             <td><span class="badge bg-light text-primary border border-primary">${item.toko}</span></td>
             <td>${item.rak}</td>
             <td>${formatChecklist(item.checklist)}</td>
-            <td><a href="${item.foto}" target="_blank" class="btn btn-sm btn-outline-info">Lihat Foto</a></td>
+            <td><button class="btn btn-sm btn-outline-info fw-bold px-3" onclick="bukaPopup('${item.foto}')">🖼️ LIHAT</button></td>
             <td class="text-center">
                 <div class="d-flex justify-content-center gap-4">
                     <div class="text-center">
@@ -58,7 +55,7 @@ function renderTable(data) {
                 </div>
             </td>
         `;
-        tableBody.appendChild(row);
+        tbody.appendChild(row);
     });
 }
 
@@ -75,32 +72,52 @@ function handleQueue(rowId, status, el) {
 
 function updateSubmitBar() {
     const bar = document.getElementById('submitBar');
-    const count = document.getElementById('countSelected');
-    count.innerText = queue.length;
+    document.getElementById('countSelected').innerText = queue.length;
     bar.style.display = queue.length > 0 ? 'block' : 'none';
 }
 
 async function kirimData() {
-    if (!confirm(`Kirim validasi untuk ${queue.length} data? Data yang disubmit akan hilang dari list.`)) return;
-    
-    document.getElementById('loader').style.display = 'block';
+    if (!confirm(`Submit ${queue.length} validasi? Data akan hilang dari daftar.`)) return;
+    toggleLoading(true);
     
     try {
         await fetch(URL_WEB_APP, {
             method: 'POST',
-            mode: 'no-cors', // Menangani redirect Google
-            cache: 'no-cache',
+            mode: 'no-cors',
             body: JSON.stringify(queue)
         });
         
-        // Refresh data setelah submit (dengan delay agar GSheet sempat memproses)
         setTimeout(() => {
-            alert("Validasi Berhasil Disimpan!");
+            alert("Data Berhasil Divalidasi!");
             fetchData();
         }, 1000);
     } catch (e) {
-        alert("Gagal mengirim data.");
-        document.getElementById('loader').style.display = 'none';
+        alert("Gagal kirim data!");
+        toggleLoading(false);
+    }
+}
+
+function bukaPopup(url) {
+    if(!url || url === "" || url === "#") return alert("Foto tidak ada!");
+    const modalEl = document.getElementById('modalFoto');
+    const imgEl = document.getElementById('frameFoto');
+    const loadEl = document.getElementById('loadingGambar');
+    const myModal = new bootstrap.Modal(modalEl);
+
+    let finalUrl = url;
+    if (url.includes('drive.google.com')) {
+        const fileId = url.split('/d/')[1]?.split('/')[0] || url.split('id=')[1]?.split('&')[0];
+        finalUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+    }
+
+    imgEl.style.display = 'none';
+    loadEl.style.display = 'block';
+    imgEl.src = finalUrl;
+    myModal.show();
+
+    imgEl.onload = () => {
+        loadEl.style.display = 'none';
+        imgEl.style.display = 'inline-block';
     }
 }
 
@@ -114,7 +131,11 @@ function formatChecklist(txt) {
     return html + '</div>';
 }
 
-// Filter Pencarian
+function toggleLoading(show) {
+    document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+}
+
+// Filter
 document.getElementById('inputNama').oninput = filter;
 document.getElementById('inputToko').oninput = filter;
 document.getElementById('inputTanggal').onchange = filter;
