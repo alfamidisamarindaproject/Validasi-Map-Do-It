@@ -1,127 +1,132 @@
-const URL_GSHEET = "https://script.google.com/macros/s/AKfycbxKwJfuqN5DCk9NsSoWRlsR2XWMCCHPRtvjojnPnpvZq9ziWNL5JhyCmGSrl4VFP4V3/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbz8jdul-sh4ElPZ4i1tHTB15dbvUfENQPnYJaC7p-__p176argqziNmiYx5PDomYUnu/exec";
 
-let localData = [];
-let updatesQueue = []; // Antrian data yang akan disubmit
+let allDataRaw = [];
+let queue = [];
 
+// Langsung jalankan saat halaman dibuka
 window.onload = fetchData;
 
 async function fetchData() {
-    toggleLoader(true);
-    updatesQueue = [];
-    updateCountDisplay();
+    const tableBody = document.getElementById('tableBody');
+    const loader = document.getElementById('loader');
+    
+    loader.style.display = 'block';
+    tableBody.innerHTML = '';
+    queue = [];
+    updateSubmitBar();
+
     try {
-        const response = await fetch(URL_GSHEET);
-        localData = await response.json();
-        renderTable(localData);
+        const response = await fetch(URL_WEB_APP);
+        allDataRaw = await response.json();
+        renderTable(allDataRaw);
     } catch (err) {
-        alert("Gagal ambil data!");
+        console.error(err);
+        tableBody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-5">Gagal terhubung ke server. Pastikan URL sudah benar.</td></tr>`;
+    } finally {
+        loader.style.display = 'none';
     }
-    toggleLoader(false);
 }
 
 function renderTable(data) {
-    const tbody = document.getElementById('tableBody');
-    tbody.innerHTML = '';
+    const tableBody = document.getElementById('tableBody');
+    tableBody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5">Semua data sudah divalidasi (Kosong).</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">Tidak ada data pending. Semua sudah divalidasi! ✅</td></tr>';
         return;
     }
 
     data.forEach(item => {
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td class="small text-muted">${item.timestamp.toString().split('T')[0]}</td>
+            <td class="small text-muted">${item.timestamp}</td>
             <td class="fw-bold">${item.nama}</td>
             <td><span class="badge bg-light text-primary border border-primary">${item.toko}</span></td>
             <td>${item.rak}</td>
             <td>${formatChecklist(item.checklist)}</td>
-            <td><button class="btn btn-sm btn-info text-white" onclick="window.open('${item.foto}','_blank')">Foto</button></td>
+            <td><a href="${item.foto}" target="_blank" class="btn btn-sm btn-outline-info">Lihat Foto</a></td>
             <td class="text-center">
-                <div class="d-flex justify-content-center gap-3">
+                <div class="d-flex justify-content-center gap-4">
                     <div class="text-center">
-                        <input type="checkbox" class="cb-ok" name="v-${item.row}" onclick="addToQueue(${item.row}, 'OK', this)">
-                        <div class="small fw-bold text-success" style="font-size:0.6rem">OK</div>
+                        <input type="checkbox" class="cb-ok" name="row-${item.row}" onclick="handleQueue(${item.row}, 'OK', this)">
+                        <div class="small fw-bold text-success mt-1" style="font-size:0.6rem">OK</div>
                     </div>
                     <div class="text-center">
-                        <input type="checkbox" class="cb-nok" name="v-${item.row}" onclick="addToQueue(${item.row}, 'NOK', this)">
-                        <div class="small fw-bold text-danger" style="font-size:0.6rem">NOK</div>
+                        <input type="checkbox" class="cb-nok" name="row-${item.row}" onclick="handleQueue(${item.row}, 'NOK', this)">
+                        <div class="small fw-bold text-danger mt-1" style="font-size:0.6rem">NOK</div>
                     </div>
                 </div>
             </td>
         `;
-        tbody.appendChild(row);
+        tableBody.appendChild(row);
     });
 }
 
-function addToQueue(rowId, status, el) {
-    // Matikan checkbox pasangannya
-    const group = document.getElementsByName(`v-${rowId}`);
-    group.forEach(cb => { if(cb !== el) cb.checked = false; });
+function handleQueue(rowId, status, el) {
+    const rowGroup = document.getElementsByName(`row-${rowId}`);
+    rowGroup.forEach(cb => { if(cb !== el) cb.checked = false; });
 
-    // Hapus data lama di antrian untuk baris yang sama (jika ada)
-    updatesQueue = updatesQueue.filter(item => item.row !== rowId);
-
-    // Tambahkan ke antrian jika diceklis
+    queue = queue.filter(q => q.row !== rowId);
     if (el.checked) {
-        updatesQueue.push({ row: rowId, status: status });
+        queue.push({ row: rowId, status: status });
     }
-    
-    updateCountDisplay();
+    updateSubmitBar();
 }
 
-async function submitValidasi() {
-    if (updatesQueue.length === 0) return alert("Pilih minimal satu data untuk divalidasi!");
-    
-    if (!confirm(`Simpan ${updatesQueue.length} data validasi? Data yang divalidasi akan hilang dari daftar.`)) return;
+function updateSubmitBar() {
+    const bar = document.getElementById('submitBar');
+    const count = document.getElementById('countSelected');
+    count.innerText = queue.length;
+    bar.style.display = queue.length > 0 ? 'block' : 'none';
+}
 
-    toggleLoader(true);
+async function kirimData() {
+    if (!confirm(`Kirim validasi untuk ${queue.length} data? Data yang disubmit akan hilang dari list.`)) return;
+    
+    document.getElementById('loader').style.display = 'block';
+    
     try {
-        await fetch(URL_GSHEET, {
+        await fetch(URL_WEB_APP, {
             method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify(updatesQueue)
+            mode: 'no-cors', // Menangani redirect Google
+            cache: 'no-cache',
+            body: JSON.stringify(queue)
         });
         
-        // Setelah sukses, ambil data terbaru (data yang sudah divalidasi otomatis hilang dari GSheet)
-        setTimeout(fetchData, 1500); 
+        // Refresh data setelah submit (dengan delay agar GSheet sempat memproses)
+        setTimeout(() => {
+            alert("Validasi Berhasil Disimpan!");
+            fetchData();
+        }, 1000);
     } catch (e) {
-        alert("Gagal submit!");
-        toggleLoader(false);
+        alert("Gagal mengirim data.");
+        document.getElementById('loader').style.display = 'none';
     }
 }
 
-function updateCountDisplay() {
-    document.getElementById('countUpdate').innerText = updatesQueue.length;
-}
-
-function toggleLoader(show) {
-    document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
-}
-
-function formatChecklist(text) {
-    const keys = ["Plano", "Label Price", "Display", "Kebersihan"];
-    let html = '<div>';
-    keys.forEach(k => {
-        const ok = new RegExp(`${k}.*(ada|ya|ok|v|lengkap)`, 'i').test(text);
+function formatChecklist(txt) {
+    const items = ["Plano", "Label Price", "Display", "Kebersihan"];
+    let html = '<div class="checklist-box">';
+    items.forEach(k => {
+        const ok = new RegExp(`${k}.*(ada|ya|ok|v|lengkap)`, 'i').test(txt);
         html += `<div class="checklist-item"><span>${k}</span><span style="color:${ok?'green':'red'}">${ok?'✔':'✖'}</span></div>`;
     });
     return html + '</div>';
 }
 
-// Filter logic (Real-time)
-document.getElementById('inputNama').oninput = runFilter;
-document.getElementById('inputToko').oninput = runFilter;
-document.getElementById('inputTanggal').onchange = runFilter;
+// Filter Pencarian
+document.getElementById('inputNama').oninput = filter;
+document.getElementById('inputToko').oninput = filter;
+document.getElementById('inputTanggal').onchange = filter;
 
-function runFilter() {
+function filter() {
     const n = document.getElementById('inputNama').value.toLowerCase();
     const t = document.getElementById('inputToko').value.toLowerCase();
     const d = document.getElementById('inputTanggal').value;
-    const filtered = localData.filter(i => {
+    const f = allDataRaw.filter(i => {
         return i.nama.toLowerCase().includes(n) && 
                i.toko.toLowerCase().includes(t) && 
-               (d === "" || i.timestamp.toString().startsWith(d));
+               (d === "" || i.timestamp.startsWith(d));
     });
-    renderTable(filtered);
+    renderTable(f);
 }
