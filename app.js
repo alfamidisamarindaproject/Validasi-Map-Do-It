@@ -1,12 +1,12 @@
-// GANTI DENGAN URL WEB APP ANDA YANG BARU (SETELAH REDEPLOY)
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxo8dz10VnfLU2hS4mDqoKgBltGElSpQx8Swa5wPB_Xn3MFCY1Vh44YY6Him1sqiKtd/exec";
+// GANTI DENGAN URL WEB APP ANDA YANG BARU
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxilq1gd1uGA4kKNR1QO1hEOHksVgA6rTgP-f_VfV1o3yiYHrf3NKg4zeE6ldS6fHUt/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
 let queue = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    cekStatusLogin(); // Mengecek apakah user sudah login atau belum
+    cekStatusLogin(); 
 
     const inputElements = ['inputNama', 'inputToko', 'inputTanggal'];
     inputElements.forEach(id => {
@@ -18,24 +18,19 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// ================= LOGIKA LOGIN & SESSIONS =================
-
 function cekStatusLogin() {
     const sesiUser = localStorage.getItem('sesiLoginMAP');
     
     if (sesiUser) {
-        // Jika sudah login
         const userData = JSON.parse(sesiUser);
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('appContainer').style.display = 'block';
         
-        // Tampilkan Nama & Role di Header
         document.getElementById('displayUserName').innerText = userData.name;
         document.getElementById('displayUserRole').innerText = userData.role;
         
-        fetchData(); // Load data tabel
+        fetchData(); 
     } else {
-        // Jika belum login
         document.getElementById('loginScreen').style.display = 'flex';
         document.getElementById('appContainer').style.display = 'none';
     }
@@ -44,22 +39,21 @@ function cekStatusLogin() {
 async function prosesLogin(e) {
     e.preventDefault();
     
-    const user = document.getElementById('logUsername').value;
-    const pass = document.getElementById('logPassword').value;
+    // Gunakan trim() untuk membuang spasi di awal/akhir input
+    const user = document.getElementById('logUsername').value.trim();
+    const pass = document.getElementById('logPassword').value.trim();
     const btn = document.getElementById('btnLogin');
     
     btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Memeriksa...';
     btn.disabled = true;
 
     try {
-        // Memanggil URL Web App dengan parameter action=login
         const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
         
         const response = await fetch(urlLogin);
         const result = await response.json();
         
         if (result.success) {
-            // Simpan data login di LocalStorage
             localStorage.setItem('sesiLoginMAP', JSON.stringify({
                 name: result.name,
                 role: result.role
@@ -67,19 +61,18 @@ async function prosesLogin(e) {
             
             Swal.fire({
                 icon: 'success',
-                title: `Selamat Datang, ${result.name}!`,
-                text: `Login sebagai ${result.role} berhasil.`,
+                title: `Berhasil!`,
+                text: `Selamat datang, ${result.name}`,
                 timer: 1500,
                 showConfirmButton: false
             });
             
             setTimeout(() => { cekStatusLogin(); }, 1500);
         } else {
-            Swal.fire('Login Gagal', result.message || 'Username atau Password salah!', 'error');
+            Swal.fire('Login Gagal', result.message, 'error');
         }
     } catch (err) {
-        Swal.fire('Koneksi Error', 'Tidak dapat terhubung ke server verifikasi.', 'error');
-        console.error(err);
+        Swal.fire('Koneksi Error', 'Gagal memverifikasi login. Cek URL atau koneksi Anda.', 'error');
     } finally {
         btn.innerHTML = 'MASUK KE SISTEM <i class="bi bi-box-arrow-in-right ms-2"></i>';
         btn.disabled = false;
@@ -88,26 +81,20 @@ async function prosesLogin(e) {
 
 function prosesLogout() {
     Swal.fire({
-        title: 'Yakin ingin keluar?',
+        title: 'Keluar aplikasi?',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
         confirmButtonText: 'Ya, Keluar'
     }).then((result) => {
         if (result.isConfirmed) {
-            localStorage.removeItem('sesiLoginMAP'); // Hapus sesi
-            
-            // Bersihkan inputan login
+            localStorage.removeItem('sesiLoginMAP'); 
             document.getElementById('logUsername').value = '';
             document.getElementById('logPassword').value = '';
-            
-            cekStatusLogin(); // Kembali ke layar login
+            cekStatusLogin(); 
         }
     });
 }
-
-
-// ================= LOGIKA TABEL & VALIDASI =================
 
 async function fetchData() {
     const tbody = document.getElementById('tableBody');
