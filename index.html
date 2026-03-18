@@ -9,147 +9,164 @@
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     
     <style>
-        :root {
-            --primary-color: #2a5298;
-            --secondary-color: #1e3c72;
-            --bg-color: #f4f7f6;
+        :root { --primary-color: #2a5298; --secondary-color: #1e3c72; --bg-color: #f4f7f6; }
+        body { background-color: var(--bg-color); font-family: 'Segoe UI', system-ui, sans-serif; }
+        
+        /* Layar Login */
+        #loginScreen { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100vh; 
+            background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%); 
+            display: flex; justify-content: center; align-items: center; z-index: 9999; 
         }
-        body { background-color: var(--bg-color); padding-bottom: 120px; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .login-card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); width: 100%; max-width: 400px; }
+        
+        /* Area Aplikasi Utama (Disembunyikan saat belum login) */
+        #appContainer { display: none; padding-bottom: 120px; }
         
         .header-section { 
             background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%); 
-            color: white; padding: 40px 0 70px 0; border-radius: 0 0 30px 30px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); 
+            color: white; padding: 30px 0 70px 0; border-radius: 0 0 30px 30px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15); position: relative;
         }
         
-        .filter-card { 
-            border: none; border-radius: 20px; margin-top: -50px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08); background: white; 
+        .user-profile-badge {
+            background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 50px; 
+            display: inline-flex; align-items: center; gap: 10px; font-size: 0.9rem; backdrop-filter: blur(5px);
         }
         
-        .table-container { 
-            background: white; border-radius: 20px; margin-top: 25px; 
-            box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; 
-            max-height: 65vh; overflow-y: auto;
-        }
-        .table thead th { 
-            position: sticky; top: 0; background: #f8f9fa; z-index: 10; 
-            border-bottom: 2px solid #dee2e6; white-space: nowrap;
-        }
-        
+        .filter-card { border: none; border-radius: 20px; margin-top: -40px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); background: white; }
+        .table-container { background: white; border-radius: 20px; margin-top: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; max-height: 60vh; overflow-y: auto; }
+        .table thead th { position: sticky; top: 0; background: #f8f9fa; z-index: 10; border-bottom: 2px solid #dee2e6; white-space: nowrap; }
         .checklist-box { background: #fafafa; border: 1px solid #eee; border-radius: 12px; padding: 12px; min-width: 200px; }
         .checklist-item { font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #e0e0e0; padding: 6px 0; }
         .checklist-item:last-child { border-bottom: none; }
         .status-pill { font-weight: 600; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; }
         .status-ok { background: #d1e7dd; color: #0f5132; }
         .status-nok { background: #f8d7da; color: #842029; }
-        
         .validation-group .btn { padding: 8px 15px; font-weight: 600; font-size: 0.85rem; border-radius: 8px; }
         .validation-group .btn-check:checked + .btn-outline-success { background-color: #198754; color: white; border-color: #198754; }
         .validation-group .btn-check:checked + .btn-outline-danger { background-color: #dc3545; color: white; border-color: #dc3545; }
-        
-        .submit-bar { 
-            position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); 
-            backdrop-filter: blur(10px); padding: 15px 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.1); 
-            z-index: 1000; display: none; border-top: 1px solid #eee;
-        }
-        
+        .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 15px 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.1); z-index: 1000; display: none; border-top: 1px solid #eee; }
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
     </style>
 </head>
 <body>
 
-<div class="header-section text-center">
-    <h2 class="fw-bold mb-1"><i class="bi bi-shield-check me-2"></i>VALIDASI MAP DO IT</h2>
-    <p class="opacity-75 mb-0">Panel Verifikasi Area Manager & Coordinator</p>
+<div id="loginScreen">
+    <div class="login-card text-center">
+        <h3 class="fw-bold text-primary mb-2"><i class="bi bi-shield-lock"></i> PORTAL MAP</h3>
+        <p class="text-muted small mb-4">Silakan login menggunakan Nama & Password</p>
+        
+        <form id="formLogin" onsubmit="prosesLogin(event)">
+            <div class="form-floating mb-3 text-start">
+                <input type="text" class="form-control" id="logUsername" placeholder="Nama Lengkap" required>
+                <label for="logUsername">Nama Lengkap (Sesuai Struktur)</label>
+            </div>
+            <div class="form-floating mb-4 text-start">
+                <input type="password" class="form-control" id="logPassword" placeholder="Password" required>
+                <label for="logPassword">Password</label>
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-pill" id="btnLogin">
+                MASUK KE SISTEM <i class="bi bi-box-arrow-in-right ms-2"></i>
+            </button>
+        </form>
+    </div>
 </div>
 
-<div class="container-fluid px-4">
-    <div class="card filter-card p-4">
-        <div class="row g-3 align-items-end">
-            <div class="col-md-3">
-                <label class="small fw-bold text-muted mb-2"><i class="bi bi-person me-1"></i>CARI NAMA</label>
-                <input type="text" id="inputNama" class="form-control form-control-lg fs-6" placeholder="Ketik nama personil...">
-            </div>
-            <div class="col-md-2">
-                <label class="small fw-bold text-muted mb-2"><i class="bi bi-shop me-1"></i>KODE TOKO</label>
-                <input type="text" id="inputToko" class="form-control form-control-lg fs-6" placeholder="Cth: T001">
-            </div>
-            <div class="col-md-2">
-                <label class="small fw-bold text-muted mb-2"><i class="bi bi-calendar-date me-1"></i>TANGGAL</label>
-                <input type="date" id="inputTanggal" class="form-control form-control-lg fs-6">
-            </div>
-            <div class="col-md-5 d-flex gap-2">
-                <button class="btn btn-primary btn-lg fs-6 flex-grow-1 fw-bold shadow-sm" onclick="fetchData()">
-                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh Data
+<div id="appContainer">
+    <div class="header-section text-center">
+        <div class="d-flex justify-content-center mb-3">
+            <div class="user-profile-badge shadow-sm">
+                <i class="bi bi-person-circle fs-5"></i>
+                <span class="fw-bold" id="displayUserName">Memuat...</span>
+                <span class="badge bg-light text-primary" id="displayUserRole">AM/AC</span>
+                <button class="btn btn-sm btn-danger rounded-pill ms-2" onclick="prosesLogout()" title="Keluar">
+                    <i class="bi bi-power"></i>
                 </button>
-                <div class="dropdown">
-                    <button class="btn btn-outline-secondary btn-lg fs-6 fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        <i class="bi bi-check2-all me-1"></i> Aksi Massal
+            </div>
+        </div>
+        
+        <h2 class="fw-bold mb-1">VALIDASI MAP DO IT</h2>
+        <p class="opacity-75 mb-0">Panel Verifikasi Laporan Area</p>
+    </div>
+
+    <div class="container-fluid px-4">
+        <div class="card filter-card p-4">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="small fw-bold text-muted mb-2">CARI NAMA</label>
+                    <input type="text" id="inputNama" class="form-control form-control-lg fs-6" placeholder="Ketik nama...">
+                </div>
+                <div class="col-md-2">
+                    <label class="small fw-bold text-muted mb-2">KODE TOKO</label>
+                    <input type="text" id="inputToko" class="form-control form-control-lg fs-6" placeholder="Cth: T001">
+                </div>
+                <div class="col-md-2">
+                    <label class="small fw-bold text-muted mb-2">TANGGAL</label>
+                    <input type="date" id="inputTanggal" class="form-control form-control-lg fs-6">
+                </div>
+                <div class="col-md-5 d-flex gap-2">
+                    <button class="btn btn-primary btn-lg fs-6 flex-grow-1 fw-bold" onclick="fetchData()">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Data
                     </button>
-                    <ul class="dropdown-menu shadow">
-                        <li><a class="dropdown-item text-success fw-bold" href="#" onclick="tandaiSemua('OK')"><i class="bi bi-check-circle me-2"></i>Tandai Tampil OK Semua</a></li>
-                        <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="tandaiSemua('NOK')"><i class="bi bi-x-circle me-2"></i>Tandai Tampil NOK Semua</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-secondary" href="#" onclick="resetPilihan()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Pilihan</a></li>
-                    </ul>
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary btn-lg fs-6 fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Aksi Massal
+                        </button>
+                        <ul class="dropdown-menu shadow">
+                            <li><a class="dropdown-item text-success fw-bold" href="#" onclick="tandaiSemua('OK')"><i class="bi bi-check-circle me-2"></i>Tandai Tampil OK</a></li>
+                            <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="tandaiSemua('NOK')"><i class="bi bi-x-circle me-2"></i>Tandai Tampil NOK</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-secondary" href="#" onclick="resetPilihan()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Pilihan</a></li>
+                        </ul>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="table-container mb-5">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th class="ps-4">Waktu</th>
-                        <th>Nama</th>
-                        <th>Toko</th>
-                        <th>Rak</th>
-                        <th>Checklist Kelengkapan</th>
-                        <th>Foto</th>
-                        <th class="text-center pe-4">Validasi AM/AC</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody">
-                    <tr>
-                        <td colspan="7" class="text-center py-5">
-                            <div class="spinner-border text-primary mb-3" role="status"></div>
-                            <h5 class="text-muted">Menyiapkan halaman...</h5>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<div class="submit-bar" id="submitBar">
-    <div class="container d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-3">
-            <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
-                <span id="countSelected" class="fw-bold fs-5">0</span>
+        <div class="table-container mb-5">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Waktu</th>
+                            <th>Nama</th>
+                            <th>Toko</th>
+                            <th>Rak</th>
+                            <th>Checklist</th>
+                            <th>Foto</th>
+                            <th class="text-center pe-4">Validasi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
             </div>
-            <div class="fw-bold text-dark fs-5">Data Dipilih</div>
         </div>
-        <button class="btn btn-success btn-lg px-5 fw-bold rounded-pill shadow" onclick="kirimData()">
-            <i class="bi bi-cloud-arrow-up me-2"></i>SIMPAN VALIDASI
-        </button>
+    </div>
+
+    <div class="submit-bar" id="submitBar">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                    <span id="countSelected" class="fw-bold fs-5">0</span>
+                </div>
+                <div class="fw-bold text-dark fs-5">Data Dipilih</div>
+            </div>
+            <button class="btn btn-success btn-lg px-5 fw-bold rounded-pill shadow" onclick="kirimData()">
+                <i class="bi bi-cloud-arrow-up me-2"></i>SIMPAN VALIDASI
+            </button>
+        </div>
     </div>
 </div>
 
-<div class="modal fade" id="modalFoto" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalFoto" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 bg-transparent text-end">
             <button type="button" class="btn-close btn-close-white ms-auto mb-2" data-bs-dismiss="modal" style="filter: invert(1);"></button>
-            <div class="modal-body p-0 text-center position-relative">
-                <div id="loadingGambar" class="text-white py-5">
-                    <div class="spinner-border" style="width: 3rem; height: 3rem;"></div>
-                </div>
+            <div class="modal-body p-0 text-center">
+                <div id="loadingGambar" class="text-white py-5"><div class="spinner-border"></div></div>
                 <img src="" id="frameFoto" class="img-fluid rounded-3 shadow-lg" style="display:none; max-height: 85vh; width: 100%; object-fit: contain; background: #000;">
             </div>
         </div>
