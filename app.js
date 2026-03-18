@@ -1,63 +1,82 @@
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxfbhf3FqnbLdIDdSTxNduCzMdqq5Gw0dfvGJAiKj-b0LUec7Ups_9pJO6rqbBJpJZV/exec";
 
 let allDataRaw = [];
-let filteredData = []; // Menyimpan data yang sedang difilter
+let filteredData = []; 
 let queue = [];
 
-window.onload = fetchData;
+// Memastikan script baru berjalan setelah elemen HTML selesai dimuat sepenuhnya
+document.addEventListener('DOMContentLoaded', () => {
+    fetchData();
+
+    // Memasang event listener ke input pencarian dengan aman
+    const inputElements = ['inputNama', 'inputToko', 'inputTanggal'];
+    inputElements.forEach(id => {
+        const element = document.getElementById(id);
+        if(element) {
+            element.addEventListener('input', runFilter);
+            element.addEventListener('change', runFilter); // Untuk elemen tanggal
+        }
+    });
+});
 
 async function fetchData() {
-    TampilkanLoadingState();
+    const tbody = document.getElementById('tableBody');
+    
+    // Status Loading
+    tbody.innerHTML = `
+        <tr><td colspan="7" class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <h5 class="text-muted fw-bold">Mengambil data terbaru dari GSheet...</h5>
+        </td></tr>`;
+        
     queue = [];
     updateSubmitBar();
+
     try {
         const response = await fetch(URL_WEB_APP);
         const data = await response.json();
-        allDataRaw = Array.isArray(data) ? data : [];
+        
+        // Memastikan format data yang diterima adalah Array
+        allDataRaw = Array.isArray(data) ? data : (data.data && Array.isArray(data.data) ? data.data : []);
         filteredData = [...allDataRaw];
+        
         renderTable(filteredData);
     } catch (err) {
-        document.getElementById('tableBody').innerHTML = `
+        console.error("Error mengambil data: ", err);
+        tbody.innerHTML = `
             <tr><td colspan="7" class="text-center text-danger py-5">
-                <i class="bi bi-exclamation-triangle-fill fs-1 d-block mb-3"></i>
-                Gagal terhubung ke Google Sheet. Pastikan URL Web App sudah benar dan dapat diakses.
+                <i class="bi bi-wifi-off fs-1 d-block mb-3"></i>
+                <h5 class="fw-bold">Koneksi Terputus / Gagal Mengambil Data</h5>
+                <p class="small text-muted mb-0">Pastikan URL Web App sudah benar dan publik.</p>
+                <code class="small">${err.message}</code>
             </td></tr>`;
     }
-}
-
-function TampilkanLoadingState() {
-    document.getElementById('tableBody').innerHTML = `
-        <tr><td colspan="7" class="text-center py-5">
-            <div class="spinner-border text-primary mb-3" role="status"></div>
-            <h5 class="text-muted fw-bold">Mengambil data terbaru...</h5>
-        </td></tr>`;
 }
 
 function renderTable(data) {
     const tbody = document.getElementById('tableBody');
     tbody.innerHTML = '';
 
-    if (data.length === 0) {
+    if (!data || data.length === 0) {
         tbody.innerHTML = `
             <tr><td colspan="7" class="text-center py-5 text-muted">
                 <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
-                <span class="fw-bold">Tidak ada data yang perlu divalidasi.</span>
+                <span class="fw-bold">Data kosong atau semua data sudah divalidasi.</span>
             </td></tr>`;
         return;
     }
 
     data.forEach(item => {
-        // Cek apakah item ini sudah ada di queue (saat filter aktif, pilihan jangan hilang)
         const inQueue = queue.find(q => q.row === item.row);
         const isOkChecked = inQueue && inQueue.status === 'OK' ? 'checked' : '';
         const isNokChecked = inQueue && inQueue.status === 'NOK' ? 'checked' : '';
 
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td class="small text-muted ps-4">${item.timestamp}</td>
-            <td class="fw-bold text-dark">${item.nama}</td>
-            <td><span class="badge bg-light text-primary border border-primary px-2 py-1">${item.toko}</span></td>
-            <td class="fw-bold">${item.rak}</td>
+            <td class="small text-muted ps-4">${item.timestamp || '-'}</td>
+            <td class="fw-bold text-dark">${item.nama || '-'}</td>
+            <td><span class="badge bg-light text-primary border border-primary px-2 py-1">${item.toko || '-'}</span></td>
+            <td class="fw-bold">${item.rak || '-'}</td>
             <td>${parseChecklist(item.checklist)}</td>
             <td>
                 <button class="btn btn-sm btn-dark px-3 fw-bold shadow-sm rounded-pill" onclick="bukaPopup('${item.foto}')">
@@ -105,15 +124,14 @@ function parseChecklist(txt) {
 }
 
 function handleQueue(rowId, status) {
-    // Hapus id dari queue jika sudah ada, lalu masukkan kembali dengan status baru
     queue = queue.filter(q => q.row !== rowId);
     queue.push({ row: rowId, status: status });
     updateSubmitBar();
 }
 
-// Fitur Baru: Aksi Massal
 function tandaiSemua(status) {
-    // Hanya menandai data yang sedang difilter/ditampilkan
+    if (filteredData.length === 0) return;
+    
     filteredData.forEach(item => {
         const radio = document.getElementById(`${status.toLowerCase()}-${item.row}`);
         if(radio) {
@@ -141,14 +159,17 @@ function updateSubmitBar() {
     
     if (queue.length > 0) {
         bar.style.display = 'block';
-        // Animasi pop-up ringan
-        setTimeout(() => { bar.style.transform = 'translateY(0)'; }, 10);
     } else {
         bar.style.display = 'none';
     }
 }
 
 async function kirimData() {
+    if (typeof Swal === 'undefined') {
+        alert("Sistem masih memuat. Pastikan koneksi internet stabil.");
+        return;
+    }
+
     const result = await Swal.fire({
         title: 'Simpan Validasi?',
         text: `Anda akan menyimpan hasil validasi untuk ${queue.length} data.`,
@@ -176,7 +197,6 @@ async function kirimData() {
             body: JSON.stringify(queue)
         });
         
-        // Timeout karena mode no-cors tidak mengembalikan response sukses yang bisa dibaca JS
         setTimeout(() => {
             Swal.fire({
                 icon: 'success',
@@ -185,7 +205,7 @@ async function kirimData() {
                 timer: 2000,
                 showConfirmButton: false
             });
-            fetchData(); // Refresh data dari awal
+            fetchData();
         }, 1500);
     } catch (e) {
         Swal.fire('Error', 'Gagal mengirim data! Periksa koneksi internet Anda.', 'error');
@@ -193,7 +213,7 @@ async function kirimData() {
 }
 
 function bukaPopup(url) {
-    if(!url || url.length < 10) {
+    if(!url || url === 'undefined' || url.length < 10) {
         Swal.fire('Info', 'Tidak ada lampiran foto untuk baris ini.', 'info');
         return;
     }
@@ -201,10 +221,11 @@ function bukaPopup(url) {
     const modalEl = document.getElementById('modalFoto');
     const imgEl = document.getElementById('frameFoto');
     const loadEl = document.getElementById('loadingGambar');
+    
+    if(!modalEl) return;
     const myModal = new bootstrap.Modal(modalEl);
 
     let finalUrl = url;
-    // Ekstraksi ID Google Drive yang lebih presisi
     if (url.includes('drive.google.com')) {
         const match = url.match(/[-\w]{25,}/);
         if (match) {
@@ -224,20 +245,19 @@ function bukaPopup(url) {
     };
     imgEl.onerror = () => {
         loadEl.style.display = 'none';
-        Swal.fire('Gagal', 'Foto gagal dimuat. Pastikan akses Google Drive diset ke Publik (Anyone with the link).', 'error');
+        Swal.fire('Gagal', 'Foto gagal dimuat. Pastikan akses folder Google Drive diset ke Publik.', 'error');
         myModal.hide();
     }
 }
 
-// Filter Pencarian Real-time
-['inputNama', 'inputToko', 'inputTanggal'].forEach(id => {
-    document.getElementById(id).addEventListener('input', runFilter);
-});
-
 function runFilter() {
-    const n = document.getElementById('inputNama').value.toLowerCase();
-    const t = document.getElementById('inputToko').value.toLowerCase();
-    const d = document.getElementById('inputTanggal').value;
+    const inputNama = document.getElementById('inputNama');
+    const inputToko = document.getElementById('inputToko');
+    const inputTanggal = document.getElementById('inputTanggal');
+
+    const n = inputNama ? inputNama.value.toLowerCase() : '';
+    const t = inputToko ? inputToko.value.toLowerCase() : '';
+    const d = inputTanggal ? inputTanggal.value : '';
     
     filteredData = allDataRaw.filter(i => {
         return (i.nama || '').toLowerCase().includes(n) && 
