@@ -3,178 +3,181 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Validator MAP DO IT</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <title>Sistem Validasi DO IT</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     
     <style>
-        :root { --primary: #0f172a; --secondary: #1e293b; --accent: #3b82f6; --bg: #f8fafc; --gold: #fbbf24; }
-        body { background-color: var(--bg); font-family: 'Poppins', sans-serif; padding-bottom: 120px; color: #334155; }
+        :root { 
+            --bg-body: #F4F7FE; 
+            --primary: #2563EB; 
+            --text-main: #1E293B; 
+            --text-muted: #64748B;
+            --card-bg: #FFFFFF;
+            --border-color: #E2E8F0;
+        }
         
-        /* Layar Login Premium */
-        #loginScreen { position: fixed; inset: 0; background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%); display: flex; justify-content: center; align-items: center; z-index: 9999; }
-        .login-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); padding: 40px 30px; border-radius: 24px; box-shadow: 0 25px 50px rgba(0,0,0,0.25); width: 90%; max-width: 420px; border: 1px solid rgba(255,255,255,0.2); }
-        .login-card .form-control { border-radius: 12px; height: 55px; background: #f1f5f9; border: 1px solid #e2e8f0; }
-        .login-card .form-control:focus { box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2); border-color: var(--accent); }
+        body { background-color: var(--bg-body); font-family: 'Inter', sans-serif; color: var(--text-main); padding-bottom: 100px; }
         
+        /* --- LAYAR LOGIN --- */
+        #loginScreen { position: fixed; inset: 0; background: var(--bg-body); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+        .login-wrapper { background: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); width: 100%; max-width: 400px; padding: 40px 30px; border: 1px solid var(--border-color); }
+        .login-wrapper .form-control { background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; height: 50px; font-weight: 500; }
+        .login-wrapper .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+        .btn-login { background: var(--primary); border: none; border-radius: 12px; font-weight: 600; height: 50px; }
+        
+        /* --- NAVBAR & HEADER --- */
         #appContainer { display: none; }
+        .top-navbar { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 15px 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+        .brand-logo { width: 40px; height: 40px; background: #EFF6FF; color: var(--primary); border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; }
         
-        /* Header Mewah */
-        .header-section { background: var(--primary); color: white; padding: 40px 0 90px 0; border-radius: 0 0 40px 40px; position: relative; overflow: hidden; }
-        .header-bg-shape { position: absolute; top: -50%; right: -10%; width: 400px; height: 400px; background: radial-gradient(circle, rgba(59,130,246,0.3) 0%, transparent 70%); border-radius: 50%; }
+        .user-profile { background: #F8FAFC; border: 1px solid var(--border-color); padding: 6px 12px 6px 6px; border-radius: 50px; display: inline-flex; align-items: center; gap: 10px; }
+        .user-avatar { width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.85rem; font-weight: bold; }
+        .admin-avatar { background: #F59E0B; }
         
-        .user-profile-badge { background: rgba(255,255,255,0.1); padding: 8px 16px; border-radius: 50px; display: inline-flex; align-items: center; gap: 10px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 4px 15px rgba(0,0,0,0.1); transition: all 0.3s ease; }
-        .user-profile-badge:hover { background: rgba(255,255,255,0.2); transform: translateY(-2px); }
+        /* --- KONTROL PENCARIAN --- */
+        .toolbar-card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid var(--border-color); margin-top: 25px; margin-bottom: 25px; }
+        .toolbar-card .form-control { border-radius: 10px; border: 1px solid var(--border-color); background: #F8FAFC; }
         
-        /* Panel Pencarian */
-        .filter-card { border: none; border-radius: 24px; margin-top: -50px; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); background: white; padding: 25px; position: relative; z-index: 10; }
-        .form-control, .btn { border-radius: 12px; }
+        /* --- TABEL & KARTU DATA --- */
+        .data-card { background: var(--card-bg); border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid var(--border-color); overflow: hidden; margin-bottom: 20px; transition: opacity 0.3s; }
+        .data-card-header { padding: 15px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+        .data-card-body { padding: 20px; }
         
-        /* Table & Cards */
-        .table-container { background: white; border-radius: 24px; margin-top: 25px; box-shadow: 0 5px 20px rgba(15, 23, 42, 0.05); overflow: hidden; border: 1px solid #e2e8f0; }
-        .table thead th { position: sticky; top: 0; background: #f8fafc; z-index: 10; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; padding: 15px; }
-        .table tbody td { padding: 15px; vertical-align: middle; }
+        .table-custom { margin-bottom: 0; }
+        .table-custom thead th { background: #F8FAFC; color: var(--text-muted); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding: 15px 20px; }
+        .table-custom tbody td { padding: 15px 20px; vertical-align: middle; border-bottom: 1px solid #F1F5F9; font-size: 0.95rem; }
         
-        .mobile-card { background: white; border-radius: 20px; box-shadow: 0 4px 15px rgba(15, 23, 42, 0.05); border: 1px solid #e2e8f0; margin-bottom: 15px; transition: all 0.3s; }
-        .mobile-card-header { background: #f8fafc; padding: 15px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; border-radius: 20px 20px 0 0; }
-        .mobile-card-body { padding: 20px; }
+        /* Feedback Data Dipilih */
+        .item-done { opacity: 0.55; background: #F8FAFC !important; pointer-events: none; }
         
-        /* Smart Feedback UI (Rona Transparan Jika Sudah Dipilih) */
-        .item-done { opacity: 0.6; background-color: #f8fafc !important; transition: all 0.4s ease; border-left: 4px solid var(--accent) !important; }
+        /* --- CHECKLIST GRID --- */
+        .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .check-item { background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 500; }
+        .icon-ok { color: #10B981; font-size: 1rem; }
+        .icon-nok { color: #EF4444; font-size: 1rem; }
         
-        /* Checklist */
-        .checklist-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; }
-        .checklist-item { font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #cbd5e1; padding: 8px 0; }
-        .checklist-item:last-child { border-bottom: none; }
-        .status-pill { font-weight: 600; padding: 4px 10px; border-radius: 12px; font-size: 0.7rem; }
-        .status-ok { background: #dcfce7; color: #166534; }
-        .status-nok { background: #fee2e2; color: #991b1b; }
+        /* --- TOMBOL TOGGLE SWITCH (Modern) --- */
+        .validation-group { display: flex; background: #F1F5F9; border-radius: 12px; padding: 4px; gap: 4px; border: 1px solid var(--border-color); pointer-events: auto; }
+        .validation-group .btn-check + .btn { flex: 1; border: none; font-weight: 600; font-size: 0.85rem; border-radius: 8px; color: var(--text-muted); padding: 8px 0; transition: all 0.2s; }
+        .validation-group .btn-check:checked + .btn-outline-success { background: #10B981; color: white; box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3); }
+        .validation-group .btn-check:checked + .btn-outline-danger { background: #EF4444; color: white; box-shadow: 0 2px 5px rgba(239, 68, 68, 0.3); }
         
-        /* Toggle Buttons */
-        .validation-group .btn { font-weight: 600; transition: all 0.2s; }
-        .btn-check:checked + .btn-outline-success { background-color: #10b981; color: white; border-color: #10b981; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); transform: scale(1.05); }
-        .btn-check:checked + .btn-outline-danger { background-color: #ef4444; color: white; border-color: #ef4444; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); transform: scale(1.05); }
-        
-        /* Submit Bar (Glassmorphism) */
-        .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(20px); border-top: 1px solid rgba(255,255,255,0.5); padding: 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.05); z-index: 1000; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        /* --- BOTTOM SUBMIT BAR --- */
+        .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-top: 1px solid var(--border-color); padding: 15px; box-shadow: 0 -10px 20px rgba(0,0,0,0.03); z-index: 1000; transform: translateY(100%); transition: transform 0.3s ease; }
         .submit-bar.show { transform: translateY(0); }
-        
-        /* Admin Styling */
-        .admin-crown { color: var(--gold); }
-        .role-badge-admin { background: linear-gradient(45deg, #fbbf24, #f59e0b) !important; color: white !important; font-weight: 600; border: none; }
+        .btn-submit { background: #10B981; border: none; border-radius: 50px; font-weight: 600; padding: 10px 30px; }
     </style>
 </head>
 <body>
 
 <div id="loginScreen">
-    <div class="login-card text-center">
+    <div class="login-wrapper text-center">
         <div class="mb-4">
-            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white rounded-circle mb-3" style="width: 70px; height: 70px; box-shadow: 0 10px 20px rgba(59,130,246,0.3);">
+            <div class="d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px; background: #EFF6FF; color: var(--primary); border-radius: 16px;">
                 <i class="bi bi-shield-check fs-1"></i>
             </div>
-            <h3 class="fw-bold mb-1" style="color: var(--primary);">PORTAL DO IT</h3>
-            <p class="text-muted small">Verifikasi Laporan Outlet MAP</p>
+            <h4 class="fw-bold mb-1">Sistem Validasi</h4>
+            <p class="text-muted small">Masuk dengan kredensial GSheet Anda</p>
         </div>
         
         <form id="formLogin" onsubmit="prosesLogin(event)">
-            <div class="form-floating mb-3 text-start">
-                <input type="text" class="form-control" id="logUsername" placeholder="Nama Lengkap" required autocomplete="off">
-                <label for="logUsername"><i class="bi bi-person me-2"></i>Nama Lengkap</label>
+            <div class="mb-3 text-start">
+                <label class="form-label small fw-semibold text-muted mb-1">Nama Lengkap</label>
+                <input type="text" class="form-control" id="logUsername" placeholder="Sesuai struktur area..." required autocomplete="off">
             </div>
-            <div class="form-floating mb-4 text-start">
-                <input type="password" class="form-control" id="logPassword" placeholder="Password" required>
-                <label for="logPassword"><i class="bi bi-key me-2"></i>Password</label>
+            <div class="mb-4 text-start">
+                <label class="form-label small fw-semibold text-muted mb-1">Password</label>
+                <input type="password" class="form-control" id="logPassword" placeholder="••••••••" required>
             </div>
-            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-pill shadow" id="btnLogin" style="background: var(--accent); border: none;">
-                MASUK SISTEM <i class="bi bi-arrow-right-short ms-1 fs-5"></i>
+            <button type="submit" class="btn btn-primary btn-login w-100 shadow-sm" id="btnLogin">
+                Login Sistem
             </button>
         </form>
     </div>
 </div>
 
 <div id="appContainer">
-    <div class="header-section text-center">
-        <div class="header-bg-shape"></div>
-        <div class="position-relative z-1">
-            <div class="d-flex justify-content-center mb-3">
-                <div class="user-profile-badge">
-                    <i class="bi bi-person-circle fs-5" id="roleIcon"></i>
-                    <span class="fw-semibold" id="displayUserName">Memuat...</span>
-                    <span class="badge bg-secondary" id="displayUserRole">Role</span>
-                    <button class="btn btn-sm btn-danger rounded-circle ms-2" onclick="prosesLogout()" title="Keluar">
-                        <i class="bi bi-power"></i>
-                    </button>
+    <nav class="top-navbar">
+        <div class="container-fluid px-3 px-md-4 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-2">
+                <div class="brand-logo"><i class="bi bi-grid-fill"></i></div>
+                <div>
+                    <h6 class="mb-0 fw-bold">MAP DO IT</h6>
+                    <div class="small text-muted" style="font-size: 0.7rem;">Panel Verifikasi</div>
                 </div>
             </div>
-            <h2 class="fw-bold mb-1 tracking-tight">VALIDASI MAP DO IT</h2>
-            <p class="opacity-75 mb-0 px-3 small font-weight-light">Verifikasi kelayakan dan kebersihan toko dengan efisien.</p>
+            
+            <div class="user-profile shadow-sm">
+                <div class="user-avatar" id="avatarInisial">A</div>
+                <div class="d-none d-md-block text-start pe-2">
+                    <div class="fw-bold lh-1" id="displayUserName" style="font-size: 0.85rem;">Memuat...</div>
+                    <div class="small text-muted" id="displayUserRole" style="font-size: 0.75rem;">Role</div>
+                </div>
+                <button class="btn btn-sm btn-light border rounded-circle ms-1 text-danger" onclick="prosesLogout()" title="Keluar">
+                    <i class="bi bi-box-arrow-right"></i>
+                </button>
+            </div>
         </div>
-    </div>
+    </nav>
 
     <div class="container-fluid px-3 px-md-4">
-        <div class="card filter-card mx-1 mx-md-0">
-            <button class="btn btn-light d-md-none w-100 fw-semibold d-flex justify-content-between align-items-center mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
-                <span><i class="bi bi-funnel text-primary me-2"></i> Filter & Pencarian</span>
-                <i class="bi bi-chevron-down"></i>
-            </button>
-            
-            <div class="collapse d-md-block" id="filterCollapse">
-                <div class="row g-3 align-items-end mt-1 mt-md-0">
-                    <div class="col-12 col-md-3 relative">
-                        <label class="small fw-semibold text-muted mb-1">CARI NAMA</label>
-                        <input type="text" id="inputNama" class="form-control bg-light" placeholder="Ketik nama personil...">
-                    </div>
-                    <div class="col-6 col-md-2">
-                        <label class="small fw-semibold text-muted mb-1">KODE TOKO</label>
-                        <input type="text" id="inputToko" class="form-control bg-light" placeholder="T001">
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <label class="small fw-semibold text-muted mb-1">TANGGAL</label>
-                        <input type="date" id="inputTanggal" class="form-control bg-light">
-                    </div>
-                    <div class="col-12 col-md-4 d-flex gap-2">
-                        <button class="btn btn-primary flex-grow-1 fw-semibold shadow-sm" onclick="fetchData()" style="background: var(--primary);">
-                            <i class="bi bi-arrow-clockwise"></i> <span class="d-none d-md-inline ms-1">Refresh</span>
+        <div class="toolbar-card">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="small fw-semibold text-muted mb-1">Cari Nama</label>
+                    <input type="text" id="inputNama" class="form-control" placeholder="Ketik nama personil...">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="small fw-semibold text-muted mb-1">Toko</label>
+                    <input type="text" id="inputToko" class="form-control" placeholder="Cth: T001">
+                </div>
+                <div class="col-6 col-md-3">
+                    <label class="small fw-semibold text-muted mb-1">Tanggal</label>
+                    <input type="date" id="inputTanggal" class="form-control">
+                </div>
+                <div class="col-12 col-md-4 d-flex gap-2">
+                    <button class="btn btn-primary flex-grow-1 fw-semibold" onclick="fetchData()" style="border-radius: 10px;">
+                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                    </button>
+                    <div class="dropdown flex-grow-1">
+                        <button class="btn btn-light border w-100 fw-semibold dropdown-toggle" type="button" data-bs-toggle="dropdown" style="border-radius: 10px;">
+                            <i class="bi bi-check2-all me-1"></i> Massal
                         </button>
-                        <div class="dropdown flex-grow-1">
-                            <button class="btn btn-outline-secondary w-100 fw-semibold dropdown-toggle bg-light" type="button" data-bs-toggle="dropdown">
-                                <i class="bi bi-check2-all"></i> <span class="d-none d-md-inline ms-1">Aksi Massal</span>
-                            </button>
-                            <ul class="dropdown-menu shadow border-0 rounded-3">
-                                <li><a class="dropdown-item text-success fw-semibold py-2" href="#" onclick="tandaiSemua('OK')"><i class="bi bi-check-circle me-2"></i>Pilih Semua: OK</a></li>
-                                <li><a class="dropdown-item text-danger fw-semibold py-2" href="#" onclick="tandaiSemua('NOK')"><i class="bi bi-x-circle me-2"></i>Pilih Semua: NOK</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-secondary py-2" href="#" onclick="resetPilihan()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Pilihan</a></li>
-                            </ul>
-                        </div>
+                        <ul class="dropdown-menu shadow-sm border-0 rounded-3 mt-1">
+                            <li><a class="dropdown-item text-success fw-semibold py-2" href="#" onclick="tandaiSemua('OK')"><i class="bi bi-check-circle me-2"></i>Pilih Semua OK</a></li>
+                            <li><a class="dropdown-item text-danger fw-semibold py-2" href="#" onclick="tandaiSemua('NOK')"><i class="bi bi-x-circle me-2"></i>Pilih Semua NOK</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-secondary py-2" href="#" onclick="resetPilihan()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Pilihan</a></li>
+                        </ul>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div id="dataContainer" class="mt-4 mb-5 pb-4">
+        <div id="dataContainer" class="pb-5 mb-5">
             <div class="text-center py-5">
-                <div class="spinner-border text-primary border-4" style="width: 3rem; height: 3rem;"></div>
-                <h6 class="mt-3 fw-semibold text-muted">Menyiapkan Ruang Kerja...</h6>
+                <div class="spinner-border text-primary mb-3"></div>
+                <div class="text-muted fw-medium">Menghubungkan ke server...</div>
             </div>
         </div>
     </div>
 
     <div class="submit-bar" id="submitBar">
-        <div class="container d-flex justify-content-between align-items-center px-1 px-md-3">
+        <div class="container-fluid px-2 d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow" style="width: 45px; height: 45px; background: var(--accent) !important;">
-                    <span id="countSelected" class="fw-bold fs-5">0</span>
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px; font-size: 1.2rem; font-weight: bold;">
+                    <span id="countSelected">0</span>
                 </div>
                 <div>
-                    <div class="fw-bold text-dark fs-5 lh-1">Data Terpilih</div>
-                    <div class="small text-muted d-none d-md-block">Siap untuk disimpan ke sistem</div>
+                    <div class="fw-bold text-dark lh-1">Data Disimpan</div>
+                    <div class="small text-muted d-none d-md-block">Menunggu konfirmasi Anda</div>
                 </div>
             </div>
-            <button class="btn btn-success btn-lg px-4 px-md-5 fw-bold rounded-pill shadow" onclick="kirimData()">
-                <i class="bi bi-cloud-arrow-up me-2"></i> SIMPAN <span class="d-none d-md-inline">VALIDASI</span>
+            <button class="btn btn-success btn-submit shadow-sm" onclick="kirimData()">
+                <i class="bi bi-cloud-arrow-up me-2"></i>KIRIM VALIDASI
             </button>
         </div>
     </div>
@@ -182,12 +185,12 @@
 
 <div class="modal fade" id="modalFoto" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 bg-transparent text-end">
-            <button type="button" class="btn-close btn-close-white ms-auto mb-3" data-bs-dismiss="modal" style="filter: invert(1); opacity: 1; background-color: rgba(0,0,0,0.5); border-radius: 50%; padding: 10px;"></button>
-            <div class="modal-body p-0 text-center relative">
-                <div id="loadingGambar" class="text-white py-5"><div class="spinner-border" style="width: 3rem; height: 3rem;"></div></div>
-                <img src="" id="frameFoto" class="img-fluid rounded-4 shadow-lg border border-secondary" style="display:none; max-height: 80vh; width: 100%; object-fit: contain; background: rgba(0,0,0,0.8);">
+        <div class="modal-content border-0 bg-transparent text-center">
+            <div class="d-flex justify-content-end mb-2">
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="background-color: rgba(255,255,255,0.8); border-radius: 50%; padding: 10px;"></button>
             </div>
+            <div id="loadingGambar" class="text-white py-5"><div class="spinner-border"></div></div>
+            <img src="" id="frameFoto" class="img-fluid rounded-3 shadow" style="display:none; max-height: 80vh; margin: 0 auto; object-fit: contain;">
         </div>
     </div>
 </div>
