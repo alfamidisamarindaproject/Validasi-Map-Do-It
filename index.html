@@ -9,8 +9,8 @@
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     
     <style>
-        :root { --primary-color: #2a5298; --secondary-color: #1e3c72; --bg-color: #f4f7f6; }
-        body { background-color: var(--bg-color); font-family: 'Segoe UI', system-ui, sans-serif; }
+        :root { --primary-color: #1a4387; --secondary-color: #0b224d; --accent-color: #ffc107; --bg-color: #f0f4f8; }
+        body { background-color: var(--bg-color); font-family: 'Inter', 'Segoe UI', system-ui, sans-serif; padding-bottom: 100px; }
         
         /* Layar Login */
         #loginScreen { 
@@ -18,58 +18,69 @@
             background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%); 
             display: flex; justify-content: center; align-items: center; z-index: 9999; 
         }
-        .login-card { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); width: 100%; max-width: 400px; }
+        .login-card { background: white; padding: 40px 30px; border-radius: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); width: 90%; max-width: 400px; }
+        .login-card .form-control { border-radius: 12px; height: 55px; }
         
-        /* Area Aplikasi Utama (Disembunyikan saat belum login) */
-        #appContainer { display: none; padding-bottom: 120px; }
-        
+        /* Aplikasi Utama */
+        #appContainer { display: none; }
         .header-section { 
             background: linear-gradient(135deg, var(--secondary-color) 0%, var(--primary-color) 100%); 
-            color: white; padding: 30px 0 70px 0; border-radius: 0 0 30px 30px; 
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); position: relative;
+            color: white; padding: 40px 0 80px 0; border-radius: 0 0 40px 40px; 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1); 
         }
         
         .user-profile-badge {
-            background: rgba(255,255,255,0.2); padding: 8px 15px; border-radius: 50px; 
-            display: inline-flex; align-items: center; gap: 10px; font-size: 0.9rem; backdrop-filter: blur(5px);
+            background: rgba(255,255,255,0.15); padding: 8px 15px; border-radius: 50px; 
+            display: inline-flex; align-items: center; gap: 10px; font-size: 0.9rem; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.2);
         }
         
-        .filter-card { border: none; border-radius: 20px; margin-top: -40px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); background: white; }
-        .table-container { background: white; border-radius: 20px; margin-top: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; max-height: 60vh; overflow-y: auto; }
-        .table thead th { position: sticky; top: 0; background: #f8f9fa; z-index: 10; border-bottom: 2px solid #dee2e6; white-space: nowrap; }
-        .checklist-box { background: #fafafa; border: 1px solid #eee; border-radius: 12px; padding: 12px; min-width: 200px; }
-        .checklist-item { font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #e0e0e0; padding: 6px 0; }
+        .filter-card { border: none; border-radius: 20px; margin-top: -45px; box-shadow: 0 10px 25px rgba(0,0,0,0.06); background: white; }
+        
+        /* Styling Spesifik Mobile / Desktop */
+        .table-container { background: white; border-radius: 20px; margin-top: 25px; box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; }
+        .table thead th { position: sticky; top: 0; background: #f8f9fa; z-index: 10; border-bottom: 2px solid #dee2e6; }
+        
+        .mobile-card { background: white; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: 1px solid #eef2f5; margin-bottom: 15px; overflow: hidden; }
+        .mobile-card-header { background: #f8f9fa; padding: 12px 15px; border-bottom: 1px solid #eef2f5; display: flex; justify-content: space-between; align-items: center;}
+        .mobile-card-body { padding: 15px; }
+        
+        .checklist-box { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; padding: 10px; }
+        .checklist-item { font-size: 0.75rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #dee2e6; padding: 6px 0; }
         .checklist-item:last-child { border-bottom: none; }
-        .status-pill { font-weight: 600; padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; }
+        .status-pill { font-weight: 700; padding: 3px 8px; border-radius: 12px; font-size: 0.65rem; }
         .status-ok { background: #d1e7dd; color: #0f5132; }
         .status-nok { background: #f8d7da; color: #842029; }
-        .validation-group .btn { padding: 8px 15px; font-weight: 600; font-size: 0.85rem; border-radius: 8px; }
-        .validation-group .btn-check:checked + .btn-outline-success { background-color: #198754; color: white; border-color: #198754; }
-        .validation-group .btn-check:checked + .btn-outline-danger { background-color: #dc3545; color: white; border-color: #dc3545; }
-        .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); padding: 15px 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.1); z-index: 1000; display: none; border-top: 1px solid #eee; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
+        
+        .btn-check:checked + .btn-outline-success { background-color: #198754; color: white; border-color: #198754; }
+        .btn-check:checked + .btn-outline-danger { background-color: #dc3545; color: white; border-color: #dc3545; }
+        
+        .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); padding: 15px 20px; box-shadow: 0 -5px 25px rgba(0,0,0,0.1); z-index: 1000; display: none; border-top: 1px solid #eee; transition: all 0.3s ease; }
+        
+        /* Admin Crown */
+        .admin-icon { color: var(--accent-color); text-shadow: 0 0 10px rgba(255, 193, 7, 0.5); }
     </style>
 </head>
 <body>
 
 <div id="loginScreen">
     <div class="login-card text-center">
-        <h3 class="fw-bold text-primary mb-2"><i class="bi bi-shield-lock"></i> PORTAL MAP</h3>
-        <p class="text-muted small mb-4">Silakan login menggunakan Nama & Password</p>
+        <div class="mb-4">
+            <i class="bi bi-shield-check" style="font-size: 3.5rem; color: var(--primary-color);"></i>
+            <h3 class="fw-bold mt-2" style="color: var(--secondary-color);">PORTAL MAP</h3>
+            <p class="text-muted small">Verifikasi Area Manager & Coordinator</p>
+        </div>
         
         <form id="formLogin" onsubmit="prosesLogin(event)">
             <div class="form-floating mb-3 text-start">
                 <input type="text" class="form-control" id="logUsername" placeholder="Nama Lengkap" required>
-                <label for="logUsername">Nama Lengkap (Sesuai Struktur)</label>
+                <label for="logUsername"><i class="bi bi-person me-2"></i>Nama Lengkap</label>
             </div>
             <div class="form-floating mb-4 text-start">
                 <input type="password" class="form-control" id="logPassword" placeholder="Password" required>
-                <label for="logPassword">Password</label>
+                <label for="logPassword"><i class="bi bi-key me-2"></i>Password</label>
             </div>
-            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-pill" id="btnLogin">
-                MASUK KE SISTEM <i class="bi bi-box-arrow-in-right ms-2"></i>
+            <button type="submit" class="btn btn-primary w-100 py-3 fw-bold rounded-pill shadow-sm" id="btnLogin" style="background: var(--primary-color);">
+                MASUK <i class="bi bi-arrow-right-circle ms-2"></i>
             </button>
         </form>
     </div>
@@ -79,83 +90,78 @@
     <div class="header-section text-center">
         <div class="d-flex justify-content-center mb-3">
             <div class="user-profile-badge shadow-sm">
-                <i class="bi bi-person-circle fs-5"></i>
+                <i class="bi bi-person-circle fs-5" id="roleIcon"></i>
                 <span class="fw-bold" id="displayUserName">Memuat...</span>
-                <span class="badge bg-light text-primary" id="displayUserRole">AM/AC</span>
-                <button class="btn btn-sm btn-danger rounded-pill ms-2" onclick="prosesLogout()" title="Keluar">
+                <span class="badge" id="displayUserRole" style="background: rgba(0,0,0,0.3);">AM/AC</span>
+                <button class="btn btn-sm btn-danger rounded-circle ms-1 px-2 py-1" onclick="prosesLogout()" title="Keluar">
                     <i class="bi bi-power"></i>
                 </button>
             </div>
         </div>
-        
         <h2 class="fw-bold mb-1">VALIDASI MAP DO IT</h2>
-        <p class="opacity-75 mb-0">Panel Verifikasi Laporan Area</p>
+        <p class="opacity-75 mb-0 px-3 small">Tandai kelayakan laporan toko dengan cepat</p>
     </div>
 
-    <div class="container-fluid px-4">
-        <div class="card filter-card p-4">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="small fw-bold text-muted mb-2">CARI NAMA</label>
-                    <input type="text" id="inputNama" class="form-control form-control-lg fs-6" placeholder="Ketik nama...">
-                </div>
-                <div class="col-md-2">
-                    <label class="small fw-bold text-muted mb-2">KODE TOKO</label>
-                    <input type="text" id="inputToko" class="form-control form-control-lg fs-6" placeholder="Cth: T001">
-                </div>
-                <div class="col-md-2">
-                    <label class="small fw-bold text-muted mb-2">TANGGAL</label>
-                    <input type="date" id="inputTanggal" class="form-control form-control-lg fs-6">
-                </div>
-                <div class="col-md-5 d-flex gap-2">
-                    <button class="btn btn-primary btn-lg fs-6 flex-grow-1 fw-bold" onclick="fetchData()">
-                        <i class="bi bi-arrow-clockwise me-1"></i> Refresh Data
-                    </button>
-                    <div class="dropdown">
-                        <button class="btn btn-outline-secondary btn-lg fs-6 fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                            Aksi Massal
+    <div class="container-fluid px-2 px-md-4">
+        <div class="card filter-card p-3 p-md-4 mx-2 mx-md-0">
+            <button class="btn btn-light d-md-none w-100 fw-bold d-flex justify-content-between align-items-center mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#filterCollapse">
+                <span><i class="bi bi-funnel-fill text-primary me-2"></i> Filter & Pencarian</span>
+                <i class="bi bi-chevron-down"></i>
+            </button>
+            
+            <div class="collapse d-md-block" id="filterCollapse">
+                <div class="row g-3 align-items-end mt-1 mt-md-0">
+                    <div class="col-12 col-md-3">
+                        <label class="small fw-bold text-muted mb-1">NAMA PERSONIL</label>
+                        <input type="text" id="inputNama" class="form-control" placeholder="Ketik nama...">
+                    </div>
+                    <div class="col-6 col-md-2">
+                        <label class="small fw-bold text-muted mb-1">KODE TOKO</label>
+                        <input type="text" id="inputToko" class="form-control" placeholder="Cth: T001">
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <label class="small fw-bold text-muted mb-1">TANGGAL</label>
+                        <input type="date" id="inputTanggal" class="form-control">
+                    </div>
+                    <div class="col-12 col-md-4 d-flex gap-2">
+                        <button class="btn btn-primary flex-grow-1 fw-bold" onclick="fetchData()">
+                            <i class="bi bi-arrow-clockwise"></i> <span class="d-none d-md-inline">Refresh</span>
                         </button>
-                        <ul class="dropdown-menu shadow">
-                            <li><a class="dropdown-item text-success fw-bold" href="#" onclick="tandaiSemua('OK')"><i class="bi bi-check-circle me-2"></i>Tandai Tampil OK</a></li>
-                            <li><a class="dropdown-item text-danger fw-bold" href="#" onclick="tandaiSemua('NOK')"><i class="bi bi-x-circle me-2"></i>Tandai Tampil NOK</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-secondary" href="#" onclick="resetPilihan()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Pilihan</a></li>
-                        </ul>
+                        <div class="dropdown flex-grow-1">
+                            <button class="btn btn-outline-secondary w-100 fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-check2-all"></i> <span class="d-none d-md-inline">Massal</span>
+                            </button>
+                            <ul class="dropdown-menu shadow">
+                                <li><a class="dropdown-item text-success fw-bold py-2" href="#" onclick="tandaiSemua('OK')"><i class="bi bi-check-circle me-2"></i>Tandai Tampil OK</a></li>
+                                <li><a class="dropdown-item text-danger fw-bold py-2" href="#" onclick="tandaiSemua('NOK')"><i class="bi bi-x-circle me-2"></i>Tandai Tampil NOK</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-secondary py-2" href="#" onclick="resetPilihan()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Pilihan</a></li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="table-container mb-5">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th class="ps-4">Waktu</th>
-                            <th>Nama</th>
-                            <th>Toko</th>
-                            <th>Rak</th>
-                            <th>Checklist</th>
-                            <th>Foto</th>
-                            <th class="text-center pe-4">Validasi</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tableBody"></tbody>
-                </table>
+        <div id="dataContainer" class="mt-4">
+            <div class="text-center py-5">
+                <div class="spinner-border text-primary"></div>
+                <p class="mt-3 text-muted fw-bold">Menyiapkan Ruang Kerja...</p>
             </div>
         </div>
     </div>
 
     <div class="submit-bar" id="submitBar">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center gap-3">
-                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+        <div class="container d-flex justify-content-between align-items-center px-0 px-md-3">
+            <div class="d-flex align-items-center gap-2 gap-md-3">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
                     <span id="countSelected" class="fw-bold fs-5">0</span>
                 </div>
-                <div class="fw-bold text-dark fs-5">Data Dipilih</div>
+                <div class="fw-bold text-dark d-none d-md-block fs-5">Data Dipilih</div>
+                <div class="fw-bold text-dark d-md-none small lh-1">Data<br>Dipilih</div>
             </div>
-            <button class="btn btn-success btn-lg px-5 fw-bold rounded-pill shadow" onclick="kirimData()">
-                <i class="bi bi-cloud-arrow-up me-2"></i>SIMPAN VALIDASI
+            <button class="btn btn-success btn-lg px-3 px-md-5 fw-bold rounded-pill shadow-sm" onclick="kirimData()">
+                <i class="bi bi-cloud-arrow-up me-1"></i> SIMPAN <span class="d-none d-md-inline">VALIDASI</span>
             </button>
         </div>
     </div>
