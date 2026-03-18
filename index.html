@@ -27,7 +27,6 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.08); background: white; 
         }
         
-        /* Table Styling */
         .table-container { 
             background: white; border-radius: 20px; margin-top: 25px; 
             box-shadow: 0 5px 20px rgba(0,0,0,0.05); overflow: hidden; 
@@ -38,7 +37,6 @@
             border-bottom: 2px solid #dee2e6; white-space: nowrap;
         }
         
-        /* Checklist Styling */
         .checklist-box { background: #fafafa; border: 1px solid #eee; border-radius: 12px; padding: 12px; min-width: 200px; }
         .checklist-item { font-size: 0.8rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #e0e0e0; padding: 6px 0; }
         .checklist-item:last-child { border-bottom: none; }
@@ -46,7 +44,6 @@
         .status-ok { background: #d1e7dd; color: #0f5132; }
         .status-nok { background: #f8d7da; color: #842029; }
         
-        /* Custom Toggle Validation Buttons */
         .validation-group .btn { padding: 8px 15px; font-weight: 600; font-size: 0.85rem; border-radius: 8px; }
         .validation-group .btn-check:checked + .btn-outline-success { background-color: #198754; color: white; border-color: #198754; }
         .validation-group .btn-check:checked + .btn-outline-danger { background-color: #dc3545; color: white; border-color: #dc3545; }
@@ -54,10 +51,9 @@
         .submit-bar { 
             position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); 
             backdrop-filter: blur(10px); padding: 15px 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.1); 
-            z-index: 1000; display: none; transition: all 0.3s ease-in-out; border-top: 1px solid #eee;
+            z-index: 1000; display: none; border-top: 1px solid #eee;
         }
         
-        /* Scrollbar kustom */
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
@@ -88,7 +84,7 @@
             </div>
             <div class="col-md-5 d-flex gap-2">
                 <button class="btn btn-primary btn-lg fs-6 flex-grow-1 fw-bold shadow-sm" onclick="fetchData()">
-                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh Data
                 </button>
                 <div class="dropdown">
                     <button class="btn btn-outline-secondary btn-lg fs-6 fw-bold dropdown-toggle" type="button" data-bs-toggle="dropdown">
@@ -123,7 +119,7 @@
                     <tr>
                         <td colspan="7" class="text-center py-5">
                             <div class="spinner-border text-primary mb-3" role="status"></div>
-                            <h5 class="text-muted">Menghubungkan ke sistem...</h5>
+                            <h5 class="text-muted">Menyiapkan halaman...</h5>
                         </td>
                     </tr>
                 </tbody>
