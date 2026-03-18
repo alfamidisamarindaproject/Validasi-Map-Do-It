@@ -1,24 +1,36 @@
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxfbhf3FqnbLdIDdSTxNduCzMdqq5Gw0dfvGJAiKj-b0LUec7Ups_9pJO6rqbBJpJZV/exec";
 
 let allDataRaw = [];
+let filteredData = []; // Menyimpan data yang sedang difilter
 let queue = [];
 
 window.onload = fetchData;
 
 async function fetchData() {
-    toggleLoading(true);
+    TampilkanLoadingState();
     queue = [];
     updateSubmitBar();
     try {
         const response = await fetch(URL_WEB_APP);
         const data = await response.json();
         allDataRaw = Array.isArray(data) ? data : [];
-        renderTable(allDataRaw);
+        filteredData = [...allDataRaw];
+        renderTable(filteredData);
     } catch (err) {
-        document.getElementById('tableBody').innerHTML = '<tr><td colspan="7" class="text-center text-danger py-5">Gagal terhubung ke GSheet. Pastikan URL sudah benar.</td></tr>';
-    } finally {
-        toggleLoading(false);
+        document.getElementById('tableBody').innerHTML = `
+            <tr><td colspan="7" class="text-center text-danger py-5">
+                <i class="bi bi-exclamation-triangle-fill fs-1 d-block mb-3"></i>
+                Gagal terhubung ke Google Sheet. Pastikan URL Web App sudah benar dan dapat diakses.
+            </td></tr>`;
     }
+}
+
+function TampilkanLoadingState() {
+    document.getElementById('tableBody').innerHTML = `
+        <tr><td colspan="7" class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <h5 class="text-muted fw-bold">Mengambil data terbaru...</h5>
+        </td></tr>`;
 }
 
 function renderTable(data) {
@@ -26,29 +38,39 @@ function renderTable(data) {
     tbody.innerHTML = '';
 
     if (data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 fw-bold text-muted">Semua data sudah divalidasi. ✅</td></tr>';
+        tbody.innerHTML = `
+            <tr><td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
+                <span class="fw-bold">Tidak ada data yang perlu divalidasi.</span>
+            </td></tr>`;
         return;
     }
 
     data.forEach(item => {
+        // Cek apakah item ini sudah ada di queue (saat filter aktif, pilihan jangan hilang)
+        const inQueue = queue.find(q => q.row === item.row);
+        const isOkChecked = inQueue && inQueue.status === 'OK' ? 'checked' : '';
+        const isNokChecked = inQueue && inQueue.status === 'NOK' ? 'checked' : '';
+
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td class="small text-muted">${item.timestamp}</td>
+            <td class="small text-muted ps-4">${item.timestamp}</td>
             <td class="fw-bold text-dark">${item.nama}</td>
-            <td><span class="badge bg-light text-primary border border-primary">${item.toko}</span></td>
-            <td>${item.rak}</td>
+            <td><span class="badge bg-light text-primary border border-primary px-2 py-1">${item.toko}</span></td>
+            <td class="fw-bold">${item.rak}</td>
             <td>${parseChecklist(item.checklist)}</td>
-            <td><button class="btn btn-sm btn-dark px-3 fw-bold shadow-sm" onclick="bukaPopup('${item.foto}')">Lihat Foto</button></td>
-            <td class="text-center">
-                <div class="d-flex justify-content-center gap-4">
-                    <div class="text-center">
-                        <input type="checkbox" class="cb-ok" name="row-${item.row}" onclick="handleQueue(${item.row}, 'OK', this)">
-                        <div class="small fw-bold text-success mt-1">OK</div>
-                    </div>
-                    <div class="text-center">
-                        <input type="checkbox" class="cb-nok" name="row-${item.row}" onclick="handleQueue(${item.row}, 'NOK', this)">
-                        <div class="small fw-bold text-danger mt-1">NOK</div>
-                    </div>
+            <td>
+                <button class="btn btn-sm btn-dark px-3 fw-bold shadow-sm rounded-pill" onclick="bukaPopup('${item.foto}')">
+                    <i class="bi bi-image me-1"></i> Lihat Foto
+                </button>
+            </td>
+            <td class="text-center pe-4">
+                <div class="validation-group btn-group shadow-sm" role="group">
+                    <input type="radio" class="btn-check" name="row-${item.row}" id="ok-${item.row}" autocomplete="off" ${isOkChecked} onchange="handleQueue(${item.row}, 'OK')">
+                    <label class="btn btn-outline-success px-3" for="ok-${item.row}"><i class="bi bi-check-lg me-1"></i>OK</label>
+
+                    <input type="radio" class="btn-check" name="row-${item.row}" id="nok-${item.row}" autocomplete="off" ${isNokChecked} onchange="handleQueue(${item.row}, 'NOK')">
+                    <label class="btn btn-outline-danger px-3" for="nok-${item.row}"><i class="bi bi-x-lg me-1"></i>NOK</label>
                 </div>
             </td>
         `;
@@ -57,9 +79,8 @@ function renderTable(data) {
 }
 
 function parseChecklist(txt) {
-    if (!txt) return '<span class="text-muted">Data Kosong</span>';
+    if (!txt) return '<span class="text-muted fst-italic">Data Kosong</span>';
     
-    // Mapping kategori sesuai permintaan
     const categories = [
         { key: "PLANOGRAM", label: "Planogram" },
         { key: "LABEL PRICE", label: "Label Price" },
@@ -69,99 +90,160 @@ function parseChecklist(txt) {
 
     let html = '<div class="checklist-box">';
     categories.forEach(cat => {
-        // Mencari teks "OK" setelah kata kunci kategori
         const regex = new RegExp(`${cat.key}\\s+OK`, 'i');
         const isOK = regex.test(txt);
         
         html += `
             <div class="checklist-item">
-                <span class="fw-bold">${cat.label}</span>
+                <span class="fw-semibold text-secondary">${cat.label}</span>
                 <span class="status-pill ${isOK ? 'status-ok' : 'status-nok'}">
-                    ${isOK ? '✔ OK' : '✖ NOK'}
+                    ${isOK ? '<i class="bi bi-check-circle-fill me-1"></i>OK' : '<i class="bi bi-x-circle-fill me-1"></i>NOK'}
                 </span>
             </div>`;
     });
     return html + '</div>';
 }
 
-function handleQueue(rowId, status, el) {
-    const rowGroup = document.getElementsByName(`row-${rowId}`);
-    rowGroup.forEach(cb => { if(cb !== el) cb.checked = false; });
-    
+function handleQueue(rowId, status) {
+    // Hapus id dari queue jika sudah ada, lalu masukkan kembali dengan status baru
     queue = queue.filter(q => q.row !== rowId);
-    if (el.checked) {
-        queue.push({ row: rowId, status: status });
-    }
+    queue.push({ row: rowId, status: status });
+    updateSubmitBar();
+}
+
+// Fitur Baru: Aksi Massal
+function tandaiSemua(status) {
+    // Hanya menandai data yang sedang difilter/ditampilkan
+    filteredData.forEach(item => {
+        const radio = document.getElementById(`${status.toLowerCase()}-${item.row}`);
+        if(radio) {
+            radio.checked = true;
+            handleQueue(item.row, status);
+        }
+    });
+    
+    Swal.fire({
+        toast: true, position: 'top-end', icon: 'success',
+        title: `${filteredData.length} data ditandai ${status}`,
+        showConfirmButton: false, timer: 1500
+    });
+}
+
+function resetPilihan() {
+    queue = [];
+    document.querySelectorAll('.btn-check').forEach(radio => radio.checked = false);
     updateSubmitBar();
 }
 
 function updateSubmitBar() {
     const bar = document.getElementById('submitBar');
     document.getElementById('countSelected').innerText = queue.length;
-    bar.style.display = queue.length > 0 ? 'block' : 'none';
+    
+    if (queue.length > 0) {
+        bar.style.display = 'block';
+        // Animasi pop-up ringan
+        setTimeout(() => { bar.style.transform = 'translateY(0)'; }, 10);
+    } else {
+        bar.style.display = 'none';
+    }
 }
 
 async function kirimData() {
-    if (!confirm(`Simpan validasi untuk ${queue.length} data?`)) return;
-    toggleLoading(true);
+    const result = await Swal.fire({
+        title: 'Simpan Validasi?',
+        text: `Anda akan menyimpan hasil validasi untuk ${queue.length} data.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#198754',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Ya, Simpan!',
+        cancelButtonText: 'Batal'
+    });
+
+    if (!result.isConfirmed) return;
+
+    Swal.fire({
+        title: 'Menyimpan...',
+        text: 'Mohon tunggu, sedang mengirim ke Google Sheet.',
+        allowOutsideClick: false,
+        didOpen: () => { Swal.showLoading() }
+    });
+
     try {
-        const response = await fetch(URL_WEB_APP, {
+        await fetch(URL_WEB_APP, {
             method: 'POST',
             mode: 'no-cors',
             body: JSON.stringify(queue)
         });
         
-        // Mode no-cors tidak mengembalikan response, kita berasumsi sukses jika tidak error
+        // Timeout karena mode no-cors tidak mengembalikan response sukses yang bisa dibaca JS
         setTimeout(() => {
-            alert("Data Berhasil Divalidasi & Masuk ke GSheet!");
-            fetchData();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil!',
+                text: 'Data validasi berhasil disimpan.',
+                timer: 2000,
+                showConfirmButton: false
+            });
+            fetchData(); // Refresh data dari awal
         }, 1500);
     } catch (e) {
-        alert("Gagal mengirim data!");
-        toggleLoading(false);
+        Swal.fire('Error', 'Gagal mengirim data! Periksa koneksi internet Anda.', 'error');
     }
 }
 
 function bukaPopup(url) {
-    if(!url || url.length < 10) return alert("Foto tidak ada!");
+    if(!url || url.length < 10) {
+        Swal.fire('Info', 'Tidak ada lampiran foto untuk baris ini.', 'info');
+        return;
+    }
+    
     const modalEl = document.getElementById('modalFoto');
     const imgEl = document.getElementById('frameFoto');
     const loadEl = document.getElementById('loadingGambar');
     const myModal = new bootstrap.Modal(modalEl);
 
     let finalUrl = url;
+    // Ekstraksi ID Google Drive yang lebih presisi
     if (url.includes('drive.google.com')) {
-        const fileId = url.split('/d/')[1]?.split('/')[0] || url.split('id=')[1]?.split('&')[0];
-        finalUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
+        const match = url.match(/[-\w]{25,}/);
+        if (match) {
+            finalUrl = `https://drive.google.com/thumbnail?id=${match[0]}&sz=w1000`;
+        }
     }
 
     imgEl.style.display = 'none';
     loadEl.style.display = 'block';
     imgEl.src = finalUrl;
+    
     myModal.show();
+    
     imgEl.onload = () => {
         loadEl.style.display = 'none';
         imgEl.style.display = 'inline-block';
     };
-}
-
-function toggleLoading(show) {
-    document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+    imgEl.onerror = () => {
+        loadEl.style.display = 'none';
+        Swal.fire('Gagal', 'Foto gagal dimuat. Pastikan akses Google Drive diset ke Publik (Anyone with the link).', 'error');
+        myModal.hide();
+    }
 }
 
 // Filter Pencarian Real-time
-document.getElementById('inputNama').oninput = runFilter;
-document.getElementById('inputToko').oninput = runFilter;
-document.getElementById('inputTanggal').onchange = runFilter;
+['inputNama', 'inputToko', 'inputTanggal'].forEach(id => {
+    document.getElementById(id).addEventListener('input', runFilter);
+});
 
 function runFilter() {
     const n = document.getElementById('inputNama').value.toLowerCase();
     const t = document.getElementById('inputToko').value.toLowerCase();
     const d = document.getElementById('inputTanggal').value;
-    const filtered = allDataRaw.filter(i => {
-        return i.nama.toLowerCase().includes(n) && 
-               i.toko.toLowerCase().includes(t) && 
-               (d === "" || i.timestamp.includes(d));
+    
+    filteredData = allDataRaw.filter(i => {
+        return (i.nama || '').toLowerCase().includes(n) && 
+               (i.toko || '').toLowerCase().includes(t) && 
+               (d === "" || (i.timestamp || '').includes(d));
     });
-    renderTable(filtered);
+    
+    renderTable(filteredData);
 }
