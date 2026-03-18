@@ -1,55 +1,128 @@
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxfbhf3FqnbLdIDdSTxNduCzMdqq5Gw0dfvGJAiKj-b0LUec7Ups_9pJO6rqbBJpJZV/exec";
+// GANTI DENGAN URL WEB APP ANDA YANG BARU (SETELAH REDEPLOY)
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxo8dz10VnfLU2hS4mDqoKgBltGElSpQx8Swa5wPB_Xn3MFCY1Vh44YY6Him1sqiKtd/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
 let queue = [];
 
-// Memastikan script baru berjalan setelah elemen HTML selesai dimuat sepenuhnya
 document.addEventListener('DOMContentLoaded', () => {
-    fetchData();
+    cekStatusLogin(); // Mengecek apakah user sudah login atau belum
 
-    // Memasang event listener ke input pencarian dengan aman
     const inputElements = ['inputNama', 'inputToko', 'inputTanggal'];
     inputElements.forEach(id => {
-        const element = document.getElementById(id);
-        if(element) {
-            element.addEventListener('input', runFilter);
-            element.addEventListener('change', runFilter); // Untuk elemen tanggal
+        const el = document.getElementById(id);
+        if(el) {
+            el.addEventListener('input', runFilter);
+            el.addEventListener('change', runFilter);
         }
     });
 });
 
+// ================= LOGIKA LOGIN & SESSIONS =================
+
+function cekStatusLogin() {
+    const sesiUser = localStorage.getItem('sesiLoginMAP');
+    
+    if (sesiUser) {
+        // Jika sudah login
+        const userData = JSON.parse(sesiUser);
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('appContainer').style.display = 'block';
+        
+        // Tampilkan Nama & Role di Header
+        document.getElementById('displayUserName').innerText = userData.name;
+        document.getElementById('displayUserRole').innerText = userData.role;
+        
+        fetchData(); // Load data tabel
+    } else {
+        // Jika belum login
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('appContainer').style.display = 'none';
+    }
+}
+
+async function prosesLogin(e) {
+    e.preventDefault();
+    
+    const user = document.getElementById('logUsername').value;
+    const pass = document.getElementById('logPassword').value;
+    const btn = document.getElementById('btnLogin');
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Memeriksa...';
+    btn.disabled = true;
+
+    try {
+        // Memanggil URL Web App dengan parameter action=login
+        const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
+        
+        const response = await fetch(urlLogin);
+        const result = await response.json();
+        
+        if (result.success) {
+            // Simpan data login di LocalStorage
+            localStorage.setItem('sesiLoginMAP', JSON.stringify({
+                name: result.name,
+                role: result.role
+            }));
+            
+            Swal.fire({
+                icon: 'success',
+                title: `Selamat Datang, ${result.name}!`,
+                text: `Login sebagai ${result.role} berhasil.`,
+                timer: 1500,
+                showConfirmButton: false
+            });
+            
+            setTimeout(() => { cekStatusLogin(); }, 1500);
+        } else {
+            Swal.fire('Login Gagal', result.message || 'Username atau Password salah!', 'error');
+        }
+    } catch (err) {
+        Swal.fire('Koneksi Error', 'Tidak dapat terhubung ke server verifikasi.', 'error');
+        console.error(err);
+    } finally {
+        btn.innerHTML = 'MASUK KE SISTEM <i class="bi bi-box-arrow-in-right ms-2"></i>';
+        btn.disabled = false;
+    }
+}
+
+function prosesLogout() {
+    Swal.fire({
+        title: 'Yakin ingin keluar?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Keluar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            localStorage.removeItem('sesiLoginMAP'); // Hapus sesi
+            
+            // Bersihkan inputan login
+            document.getElementById('logUsername').value = '';
+            document.getElementById('logPassword').value = '';
+            
+            cekStatusLogin(); // Kembali ke layar login
+        }
+    });
+}
+
+
+// ================= LOGIKA TABEL & VALIDASI =================
+
 async function fetchData() {
     const tbody = document.getElementById('tableBody');
-    
-    // Status Loading
-    tbody.innerHTML = `
-        <tr><td colspan="7" class="text-center py-5">
-            <div class="spinner-border text-primary mb-3" role="status"></div>
-            <h5 class="text-muted fw-bold">Mengambil data terbaru dari GSheet...</h5>
-        </td></tr>`;
-        
-    queue = [];
-    updateSubmitBar();
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5"><div class="spinner-border text-primary mb-3"></div><h5 class="text-muted fw-bold">Mengambil data dari server...</h5></td></tr>`;
+    queue = []; updateSubmitBar();
 
     try {
         const response = await fetch(URL_WEB_APP);
         const data = await response.json();
         
-        // Memastikan format data yang diterima adalah Array
         allDataRaw = Array.isArray(data) ? data : (data.data && Array.isArray(data.data) ? data.data : []);
         filteredData = [...allDataRaw];
-        
         renderTable(filteredData);
     } catch (err) {
-        console.error("Error mengambil data: ", err);
-        tbody.innerHTML = `
-            <tr><td colspan="7" class="text-center text-danger py-5">
-                <i class="bi bi-wifi-off fs-1 d-block mb-3"></i>
-                <h5 class="fw-bold">Koneksi Terputus / Gagal Mengambil Data</h5>
-                <p class="small text-muted mb-0">Pastikan URL Web App sudah benar dan publik.</p>
-                <code class="small">${err.message}</code>
-            </td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-5"><i class="bi bi-wifi-off fs-1 d-block mb-3"></i><h5 class="fw-bold">Gagal Mengambil Data</h5></td></tr>`;
     }
 }
 
@@ -58,11 +131,7 @@ function renderTable(data) {
     tbody.innerHTML = '';
 
     if (!data || data.length === 0) {
-        tbody.innerHTML = `
-            <tr><td colspan="7" class="text-center py-5 text-muted">
-                <i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i>
-                <span class="fw-bold">Data kosong atau semua data sudah divalidasi.</span>
-            </td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center py-5 text-muted"><i class="bi bi-inbox fs-1 d-block mb-3 opacity-50"></i><span class="fw-bold">Semua data sudah divalidasi.</span></td></tr>`;
         return;
     }
 
@@ -78,18 +147,14 @@ function renderTable(data) {
             <td><span class="badge bg-light text-primary border border-primary px-2 py-1">${item.toko || '-'}</span></td>
             <td class="fw-bold">${item.rak || '-'}</td>
             <td>${parseChecklist(item.checklist)}</td>
-            <td>
-                <button class="btn btn-sm btn-dark px-3 fw-bold shadow-sm rounded-pill" onclick="bukaPopup('${item.foto}')">
-                    <i class="bi bi-image me-1"></i> Lihat Foto
-                </button>
-            </td>
+            <td><button class="btn btn-sm btn-dark px-3 fw-bold shadow-sm rounded-pill" onclick="bukaPopup('${item.foto}')"><i class="bi bi-image me-1"></i> Lihat Foto</button></td>
             <td class="text-center pe-4">
-                <div class="validation-group btn-group shadow-sm" role="group">
-                    <input type="radio" class="btn-check" name="row-${item.row}" id="ok-${item.row}" autocomplete="off" ${isOkChecked} onchange="handleQueue(${item.row}, 'OK')">
-                    <label class="btn btn-outline-success px-3" for="ok-${item.row}"><i class="bi bi-check-lg me-1"></i>OK</label>
+                <div class="validation-group btn-group shadow-sm">
+                    <input type="radio" class="btn-check" name="row-${item.row}" id="ok-${item.row}" ${isOkChecked} onchange="handleQueue(${item.row}, 'OK')">
+                    <label class="btn btn-outline-success px-3" for="ok-${item.row}">OK</label>
 
-                    <input type="radio" class="btn-check" name="row-${item.row}" id="nok-${item.row}" autocomplete="off" ${isNokChecked} onchange="handleQueue(${item.row}, 'NOK')">
-                    <label class="btn btn-outline-danger px-3" for="nok-${item.row}"><i class="bi bi-x-lg me-1"></i>NOK</label>
+                    <input type="radio" class="btn-check" name="row-${item.row}" id="nok-${item.row}" ${isNokChecked} onchange="handleQueue(${item.row}, 'NOK')">
+                    <label class="btn btn-outline-danger px-3" for="nok-${item.row}">NOK</label>
                 </div>
             </td>
         `;
@@ -98,27 +163,12 @@ function renderTable(data) {
 }
 
 function parseChecklist(txt) {
-    if (!txt) return '<span class="text-muted fst-italic">Data Kosong</span>';
-    
-    const categories = [
-        { key: "PLANOGRAM", label: "Planogram" },
-        { key: "LABEL PRICE", label: "Label Price" },
-        { key: "EXP CHECKED", label: "Expired Check" },
-        { key: "CLEANING", label: "Kebersihan Rak" }
-    ];
-
+    if (!txt) return '<span class="text-muted fst-italic">Kosong</span>';
+    const categories = [{ key: "PLANOGRAM", label: "Planogram" }, { key: "LABEL PRICE", label: "Label Price" }, { key: "EXP CHECKED", label: "Expired Check" }, { key: "CLEANING", label: "Kebersihan" }];
     let html = '<div class="checklist-box">';
     categories.forEach(cat => {
-        const regex = new RegExp(`${cat.key}\\s+OK`, 'i');
-        const isOK = regex.test(txt);
-        
-        html += `
-            <div class="checklist-item">
-                <span class="fw-semibold text-secondary">${cat.label}</span>
-                <span class="status-pill ${isOK ? 'status-ok' : 'status-nok'}">
-                    ${isOK ? '<i class="bi bi-check-circle-fill me-1"></i>OK' : '<i class="bi bi-x-circle-fill me-1"></i>NOK'}
-                </span>
-            </div>`;
+        const isOK = new RegExp(`${cat.key}\\s+OK`, 'i').test(txt);
+        html += `<div class="checklist-item"><span class="fw-semibold text-secondary">${cat.label}</span><span class="status-pill ${isOK ? 'status-ok' : 'status-nok'}">${isOK ? 'OK' : 'NOK'}</span></div>`;
     });
     return html + '</div>';
 }
@@ -131,139 +181,53 @@ function handleQueue(rowId, status) {
 
 function tandaiSemua(status) {
     if (filteredData.length === 0) return;
-    
     filteredData.forEach(item => {
         const radio = document.getElementById(`${status.toLowerCase()}-${item.row}`);
-        if(radio) {
-            radio.checked = true;
-            handleQueue(item.row, status);
-        }
+        if(radio) { radio.checked = true; handleQueue(item.row, status); }
     });
-    
-    Swal.fire({
-        toast: true, position: 'top-end', icon: 'success',
-        title: `${filteredData.length} data ditandai ${status}`,
-        showConfirmButton: false, timer: 1500
-    });
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: `${filteredData.length} data ditandai ${status}`, showConfirmButton: false, timer: 1500 });
 }
 
-function resetPilihan() {
-    queue = [];
-    document.querySelectorAll('.btn-check').forEach(radio => radio.checked = false);
-    updateSubmitBar();
-}
+function resetPilihan() { queue = []; document.querySelectorAll('.btn-check').forEach(r => r.checked = false); updateSubmitBar(); }
 
 function updateSubmitBar() {
     const bar = document.getElementById('submitBar');
     document.getElementById('countSelected').innerText = queue.length;
-    
-    if (queue.length > 0) {
-        bar.style.display = 'block';
-    } else {
-        bar.style.display = 'none';
-    }
+    bar.style.display = queue.length > 0 ? 'block' : 'none';
 }
 
 async function kirimData() {
-    if (typeof Swal === 'undefined') {
-        alert("Sistem masih memuat. Pastikan koneksi internet stabil.");
-        return;
-    }
+    const res = await Swal.fire({ title: 'Simpan Validasi?', text: `${queue.length} data akan disimpan.`, icon: 'question', showCancelButton: true, confirmButtonText: 'Ya, Simpan', confirmButtonColor: '#198754' });
+    if (!res.isConfirmed) return;
 
-    const result = await Swal.fire({
-        title: 'Simpan Validasi?',
-        text: `Anda akan menyimpan hasil validasi untuk ${queue.length} data.`,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonColor: '#198754',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Ya, Simpan!',
-        cancelButtonText: 'Batal'
-    });
-
-    if (!result.isConfirmed) return;
-
-    Swal.fire({
-        title: 'Menyimpan...',
-        text: 'Mohon tunggu, sedang mengirim ke Google Sheet.',
-        allowOutsideClick: false,
-        didOpen: () => { Swal.showLoading() }
-    });
+    Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
 
     try {
-        await fetch(URL_WEB_APP, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: JSON.stringify(queue)
-        });
-        
-        setTimeout(() => {
-            Swal.fire({
-                icon: 'success',
-                title: 'Berhasil!',
-                text: 'Data validasi berhasil disimpan.',
-                timer: 2000,
-                showConfirmButton: false
-            });
-            fetchData();
-        }, 1500);
-    } catch (e) {
-        Swal.fire('Error', 'Gagal mengirim data! Periksa koneksi internet Anda.', 'error');
-    }
+        await fetch(URL_WEB_APP, { method: 'POST', mode: 'no-cors', body: JSON.stringify(queue) });
+        setTimeout(() => { Swal.fire({ icon: 'success', title: 'Berhasil disimpan', timer: 1500, showConfirmButton: false }); fetchData(); }, 1500);
+    } catch (e) { Swal.fire('Error', 'Gagal mengirim data!', 'error'); }
 }
 
 function bukaPopup(url) {
-    if(!url || url === 'undefined' || url.length < 10) {
-        Swal.fire('Info', 'Tidak ada lampiran foto untuk baris ini.', 'info');
-        return;
-    }
-    
-    const modalEl = document.getElementById('modalFoto');
+    if(!url || url.length < 10) return Swal.fire('Info', 'Tidak ada foto.', 'info');
+    const myModal = new bootstrap.Modal(document.getElementById('modalFoto'));
     const imgEl = document.getElementById('frameFoto');
     const loadEl = document.getElementById('loadingGambar');
     
-    if(!modalEl) return;
-    const myModal = new bootstrap.Modal(modalEl);
-
     let finalUrl = url;
-    if (url.includes('drive.google.com')) {
-        const match = url.match(/[-\w]{25,}/);
-        if (match) {
-            finalUrl = `https://drive.google.com/thumbnail?id=${match[0]}&sz=w1000`;
-        }
-    }
+    const match = url.match(/[-\w]{25,}/);
+    if (match) finalUrl = `https://drive.google.com/thumbnail?id=${match[0]}&sz=w1000`;
 
-    imgEl.style.display = 'none';
-    loadEl.style.display = 'block';
-    imgEl.src = finalUrl;
-    
+    imgEl.style.display = 'none'; loadEl.style.display = 'block'; imgEl.src = finalUrl;
     myModal.show();
-    
-    imgEl.onload = () => {
-        loadEl.style.display = 'none';
-        imgEl.style.display = 'inline-block';
-    };
-    imgEl.onerror = () => {
-        loadEl.style.display = 'none';
-        Swal.fire('Gagal', 'Foto gagal dimuat. Pastikan akses folder Google Drive diset ke Publik.', 'error');
-        myModal.hide();
-    }
+    imgEl.onload = () => { loadEl.style.display = 'none'; imgEl.style.display = 'inline-block'; };
+    imgEl.onerror = () => { loadEl.style.display = 'none'; myModal.hide(); Swal.fire('Error', 'Gagal memuat foto.', 'error'); };
 }
 
 function runFilter() {
-    const inputNama = document.getElementById('inputNama');
-    const inputToko = document.getElementById('inputToko');
-    const inputTanggal = document.getElementById('inputTanggal');
-
-    const n = inputNama ? inputNama.value.toLowerCase() : '';
-    const t = inputToko ? inputToko.value.toLowerCase() : '';
-    const d = inputTanggal ? inputTanggal.value : '';
-    
-    filteredData = allDataRaw.filter(i => {
-        return (i.nama || '').toLowerCase().includes(n) && 
-               (i.toko || '').toLowerCase().includes(t) && 
-               (d === "" || (i.timestamp || '').includes(d));
-    });
-    
+    const n = document.getElementById('inputNama').value.toLowerCase();
+    const t = document.getElementById('inputToko').value.toLowerCase();
+    const d = document.getElementById('inputTanggal').value;
+    filteredData = allDataRaw.filter(i => (i.nama || '').toLowerCase().includes(n) && (i.toko || '').toLowerCase().includes(t) && (d === "" || (i.timestamp || '').includes(d)));
     renderTable(filteredData);
 }
