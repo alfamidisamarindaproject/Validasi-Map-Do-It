@@ -1,24 +1,29 @@
 // ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzXYxvcB_BEE-bZGoDZTZfClTrOyGTaESvFEcgPgsToAh8HX48xRCYOLhJQ4Ax9rwc/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyB7qPxEMGvlaQXM74f2wAzf567sy4MEi-artrGNGlXcS_RAUJnJyVi_e6QWw7Tydhs/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
 let queue = [];
 let searchTimeout = null; 
 
-// ---> PENGAMBILAN DATA STANDAR (KHUSUS GITHUB PAGES) <---
-async function fetchGAS(url) {
-    try {
-        const response = await fetch(url);
-        const text = await response.text(); 
-        try {
-            return JSON.parse(text); 
-        } catch (parseError) {
-            console.error("Gagal parse JSON:", text.substring(0, 100));
-            if (text.includes("<html") || text.includes("Sign in")) throw new Error("TERBLOKIR_LOGIN");
-            throw new Error("SERVER_ERROR");
-        }
-    } catch (error) { throw error; }
+// ---> TRIK BYPASS KEAMANAN GOOGLE VIA JSONP <---
+function fetchJSONP(url) {
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            resolve(data);
+        };
+        const script = document.createElement('script');
+        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+        script.onerror = () => {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            reject(new Error("Gagal terhubung. Pastikan Anda sudah login ke akun Google perusahaan di browser ini."));
+        };
+        document.body.appendChild(script);
+    });
 }
 
 // ---> PENJINAK FORMAT TANGGAL INDONESIA (DD/MM/YYYY) <---
@@ -28,7 +33,6 @@ function parseSafeDate(dateStr) {
     if (str.includes("/")) {
         const parts = str.split("T");
         const dParts = parts[0].split("/");
-        // Ubah DD/MM/YYYY menjadi YYYY-MM-DD standar Internasional
         if (dParts.length === 3) str = `${dParts[2]}-${dParts[1]}-${dParts[0]}T${parts[1] || '00:00:00'}`;
     }
     return new Date(str);
@@ -79,13 +83,13 @@ async function prosesLogin(e) {
         } 
         else {
             const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
-            const result = await fetchGAS(urlLogin);
+            const result = await fetchJSONP(urlLogin);
             
             if (result.success) {
                 isSuccess = true; finalName = result.name; finalRole = result.role;
                 if (finalName.toUpperCase() === "AKBAR RASYID") finalRole = "Admin";
             } else {
-                Swal.fire('Akses Ditolak', result.message, 'error');
+                Swal.fire('Login Gagal', result.message, 'error');
             }
         }
 
@@ -96,9 +100,7 @@ async function prosesLogin(e) {
         }
 
     } catch (err) {
-        let msg = "Terjadi masalah jaringan atau CORS.";
-        if (err.message === "TERBLOKIR_LOGIN") msg = "Google memblokir akses. Web App harus diset 'Who has access: Anyone'.";
-        Swal.fire('Koneksi Gagal', msg, 'error');
+        Swal.fire('Koneksi Gagal', err.message, 'error');
     } finally {
         btn.innerHTML = 'Login Sistem';
         btn.disabled = false;
@@ -129,7 +131,7 @@ async function fetchData() {
         const timeSt = new Date().getTime(); 
         const fetchUrl = `${URL_WEB_APP}?action=getData&_t=${timeSt}`;
         
-        const result = await fetchGAS(fetchUrl);
+        const result = await fetchJSONP(fetchUrl);
         
         if(result.success === false) {
              document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Gagal Membaca Sheet</div><div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">${result.message}</div></div>`;
@@ -143,18 +145,10 @@ async function fetchData() {
         renderData(filteredData);
 
     } catch (err) {
-        let errorTitle = "Koneksi Terblokir (CORS)";
-        let errorMsg = "Browser memblokir permintaan ke Google Apps Script.";
-        
-        if (err.message === "TERBLOKIR_LOGIN") {
-            errorTitle = "Terblokir Halaman Login Google";
-            errorMsg = "Google memaksa web untuk login. <b>Solusi:</b> Buka Apps Script > Deploy > New Deployment > Pastikan 'Who has access' adalah <b>Anyone</b>.";
-        }
-
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
             <i class="bi bi-shield-lock fs-1 d-block mb-2"></i>
-            <div class="fw-bold">${errorTitle}</div>
-            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start" style="max-width: 400px;">${errorMsg}</div>
+            <div class="fw-bold">Akses Diblokir</div>
+            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start" style="max-width: 400px;">Sistem keamanan Google Workspace sedang aktif. Pastikan Anda sudah login ke akun Google perusahaan Anda di tab browser ini.</div>
             <br><button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
         </div>`;
     }
@@ -193,7 +187,7 @@ function updateDashboard() {
     
     dashData = dashData.filter(item => {
         if(!item.timestamp) return false;
-        const itemDate = parseSafeDate(item.timestamp); // Menggunakan parser aman
+        const itemDate = parseSafeDate(item.timestamp);
         if(isNaN(itemDate)) return false;
         
         if (period === 'MTD') return itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth;
@@ -328,7 +322,7 @@ function bukaPopup(url) {
 function runFilter() {
     const n = document.getElementById('inputNama').value.toLowerCase();
     const t = document.getElementById('inputToko').value.toLowerCase();
-    const d = document.getElementById('inputTanggal').value; // Hasilnya format YYYY-MM-DD
+    const d = document.getElementById('inputTanggal').value;
     
     const unvalidatedData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
     
@@ -339,7 +333,7 @@ function runFilter() {
         let matchDate = true;
         if (d !== "") {
             const dParts = d.split('-'); 
-            const formatID = `${dParts[2]}/${dParts[1]}/${dParts[0]}`; // Ubah ke standar DD/MM/YYYY agar cocok dengan pencarian
+            const formatID = `${dParts[2]}/${dParts[1]}/${dParts[0]}`; 
             matchDate = (i.timestamp || '').includes(d) || (i.timestamp || '').includes(formatID);
         }
         
