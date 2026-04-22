@@ -1,5 +1,5 @@
 // ===== URL WEB APP ANDA =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzwHoSbtRmgKe1qMNCAqIdDH9Ic57V_icd1Qe4O76WmIauT2CF74Yu-CfiVYd6FpkGM/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyHAhMxXiepBZeTHJ18z0s4nHzDRB-rskxNBUVLmzsz07DCPnwOzlsSZh7tJwNc08de/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
@@ -9,7 +9,7 @@ let searchTimeout = null;
 document.addEventListener('DOMContentLoaded', () => {
     cekStatusLogin(); 
 
-    // Fitur Debounce untuk pencarian
+    // Fitur Debounce untuk pencarian tabel
     ['inputNama', 'inputToko', 'inputTanggal'].forEach(id => {
         const el = document.getElementById(id);
         if(el) {
@@ -35,7 +35,6 @@ function cekStatusLogin() {
         document.getElementById('displayUserName').innerText = userData.name;
         document.getElementById('displayUserRole').innerText = userData.role;
         
-        // Buat inisial avatar (Huruf pertama dari nama)
         const inisial = userData.name.charAt(0).toUpperCase();
         const avatarEl = document.getElementById('avatarInisial');
         avatarEl.innerText = inisial;
@@ -63,21 +62,17 @@ async function prosesLogin(e) {
     btn.disabled = true;
 
     try {
-        // --- LOGIKA BYPASS UNTUK ADMIN AKBAR RASYID ---
-        // Jika input cocok dengan kredensial Admin, kita amankan role-nya di frontend 
-        // tanpa bergantung pada konfigurasi Code.gs lama
         let isSuccess = false;
         let finalName = "";
         let finalRole = "";
 
-        // 1. Pengecekan Khusus Admin Akbar Rasyid
+        // Pengecekan Khusus Admin Akbar Rasyid (Sesuai original kode Anda)
         if (user.toUpperCase() === "AKBAR RASYID" && pass === "0225065474") {
             isSuccess = true;
             finalName = "AKBAR RASYID";
             finalRole = "Admin";
         } 
         else {
-            // 2. Jika bukan, lempar ke GSheet (Code.gs) untuk pengecekan AM/AC biasa
             const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
             const response = await fetch(urlLogin);
             const result = await response.json();
@@ -87,15 +82,12 @@ async function prosesLogin(e) {
                 finalName = result.name;
                 finalRole = result.role;
                 
-                // Tambahan keamanan: Jika GSheet memvalidasi dia sebagai AM/AC 
-                // tapi namanya Akbar Rasyid, paksa ubah jadi Admin
                 if (finalName.toUpperCase() === "AKBAR RASYID") finalRole = "Admin";
             } else {
                 Swal.fire('Akses Ditolak', result.message, 'error');
             }
         }
 
-        // 3. Proses jika Berhasil Login
         if (isSuccess) {
             localStorage.setItem('sesiLoginMAP', JSON.stringify({ name: finalName, role: finalRole }));
             Swal.fire({
@@ -163,13 +155,116 @@ async function fetchData() {
         }
         
         allDataRaw = result.data || [];
-        filteredData = [...allDataRaw];
+        
+        // PENTING: Filter tabel hanya menampilkan yang Validasi-nya masih kosong
+        filteredData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
+        
+        // Setup & Tampilkan Dashboard
+        setupDashboardFilters();
+        updateDashboard();
+        document.getElementById('dashboardSection').style.display = 'block';
+
         renderData(filteredData);
     } catch (err) {
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-wifi-off fs-1 d-block mb-2"></i><div class="fw-bold">Koneksi Terputus</div></div>`;
     }
 }
 
+// ===============================================
+// FUNGSI LOGIKA DASHBOARD
+// ===============================================
+
+function setupDashboardFilters() {
+    const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
+    
+    // Populator Fungsi
+    const populate = (id, key) => {
+        const select = document.getElementById(id);
+        const uniqueItems = [...new Set(allDataRaw.map(item => item[key]).filter(v => v))].sort();
+        const currVal = select.value;
+        select.innerHTML = `<option value="ALL">Semua ${key.toUpperCase()}</option>`;
+        uniqueItems.forEach(val => {
+            select.innerHTML += `<option value="${val}">${val}</option>`;
+        });
+        if(uniqueItems.includes(currVal)) select.value = currVal;
+    };
+
+    populate('dashToko', 'toko');
+    populate('dashAC', 'ac');
+    populate('dashAM', 'am');
+
+    // Sembunyikan filter AC/AM jika yang login bukan Admin
+    if (sesiUser.role !== 'Admin') {
+        document.getElementById('dashAC').style.display = 'none';
+        document.getElementById('dashAM').style.display = 'none';
+    }
+}
+
+function updateDashboard() {
+    const period = document.getElementById('dashPeriod').value;
+    const valToko = document.getElementById('dashToko').value;
+    const valAC = document.getElementById('dashAC').value;
+    const valAM = document.getElementById('dashAM').value;
+    const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
+
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+
+    let dashData = allDataRaw;
+
+    // 1. FILTER BERDASARKAN ROLE LOGIN
+    if (sesiUser.role === 'AC') {
+        dashData = dashData.filter(i => (i.ac || '').toLowerCase() === sesiUser.name.toLowerCase());
+    } else if (sesiUser.role === 'AM') {
+        dashData = dashData.filter(i => (i.am || '').toLowerCase() === sesiUser.name.toLowerCase());
+    } else {
+        // Admin bisa menggunakan filter dropdown
+        if (valAC !== 'ALL') dashData = dashData.filter(i => i.ac === valAC);
+        if (valAM !== 'ALL') dashData = dashData.filter(i => i.am === valAM);
+    }
+
+    // 2. FILTER TOKO
+    if (valToko !== 'ALL') {
+        dashData = dashData.filter(i => i.toko === valToko);
+    }
+
+    // 3. FILTER WAKTU (MTD/YTD)
+    dashData = dashData.filter(item => {
+        if(!item.timestamp) return false;
+        const itemDate = new Date(item.timestamp.replace(" ", "T")); 
+        if(isNaN(itemDate)) return false;
+
+        if (period === 'MTD') {
+            return itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth;
+        } else if (period === 'YTD') {
+            return itemDate.getFullYear() === currentYear;
+        }
+        return true;
+    });
+
+    // 4. KALKULASI METRIK
+    const uniqueTokoCount = new Set(dashData.map(item => item.toko).filter(t=>t)).size;
+    const totalSubmit = dashData.length;
+    let lastSubmitStr = "-";
+
+    if (totalSubmit > 0) {
+        const dates = dashData.map(item => new Date(item.timestamp.replace(" ", "T")).getTime()).filter(t => !isNaN(t));
+        if(dates.length > 0) {
+            const maxDate = new Date(Math.max(...dates));
+            lastSubmitStr = maxDate.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' });
+        }
+    }
+
+    // 5. UPDATE TAMPILAN
+    document.getElementById('dashTokoCount').innerText = uniqueTokoCount;
+    document.getElementById('dashSubmitCount').innerText = totalSubmit;
+    document.getElementById('dashLastSubmit').innerText = lastSubmitStr;
+}
+
+// ===============================================
+// RENDER TABEL & CHECKLIST
+// ===============================================
 function parseChecklistGrid(txt) {
     if (!txt) return '<div class="text-muted small fst-italic">Data Kosong</div>';
     const categories = [{ key: "PLANOGRAM", label: "Planogram" }, { key: "LABEL PRICE", label: "Label Price" }, { key: "EXP CHECKED", label: "Expired" }, { key: "CLEANING", label: "Kebersihan" }];
@@ -291,7 +386,6 @@ function handleQueue(rowId, status) {
     queue = queue.filter(q => q.row !== rowId);
     queue.push({ row: rowId, status: status });
     
-    // Sinkronisasi status
     const dO = document.getElementById(`ok-desk-${rowId}`); const dN = document.getElementById(`nok-desk-${rowId}`);
     const mO = document.getElementById(`ok-mob-${rowId}`);  const mN = document.getElementById(`nok-mob-${rowId}`);
     
@@ -367,6 +461,14 @@ function runFilter() {
     const n = document.getElementById('inputNama').value.toLowerCase();
     const t = document.getElementById('inputToko').value.toLowerCase();
     const d = document.getElementById('inputTanggal').value;
-    filteredData = allDataRaw.filter(i => (i.nama || '').toLowerCase().includes(n) && (i.toko || '').toLowerCase().includes(t) && (d === "" || (i.timestamp || '').includes(d)));
+    
+    // Pastikan hanya mencari di data yang belum divalidasi
+    const unvalidatedData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
+
+    filteredData = unvalidatedData.filter(i => 
+        (i.nama || '').toLowerCase().includes(n) && 
+        (i.toko || '').toLowerCase().includes(t) && 
+        (d === "" || (i.timestamp || '').includes(d))
+    );
     renderData(filteredData);
 }
