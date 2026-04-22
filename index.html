@@ -106,7 +106,7 @@
                 <div class="brand-logo"><i class="bi bi-grid-fill"></i></div>
                 <div>
                     <h6 class="mb-0 fw-bold">MAP DO IT</h6>
-                    <div class="small text-muted" style="font-size: 0.7rem;">Panel Verifikasi</div>
+                    <div class="small text-muted" style="font-size: 0.7rem;">Panel Verifikasi & Dashboard</div>
                 </div>
             </div>
             
@@ -123,8 +123,66 @@
         </div>
     </nav>
 
-    <div class="container-fluid px-3 px-md-4">
-        <div class="toolbar-card">
+    <div class="container-fluid px-3 px-md-4 mt-4">
+        
+        <div class="dashboard-section mb-4" id="dashboardSection" style="display: none;">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                <h5 class="fw-bold mb-0"><i class="bi bi-pie-chart-fill me-2 text-primary"></i>Dashboard Performa</h5>
+                <div class="d-flex flex-wrap gap-2">
+                    <select class="form-select form-select-sm w-auto fw-medium" id="dashPeriod" onchange="updateDashboard()">
+                        <option value="MTD">Bulan Ini (MTD)</option>
+                        <option value="YTD">Tahun Ini (YTD)</option>
+                    </select>
+                    <select class="form-select form-select-sm w-auto fw-medium" id="dashAM" onchange="updateDashboard()">
+                        <option value="ALL">Semua AM</option>
+                    </select>
+                    <select class="form-select form-select-sm w-auto fw-medium" id="dashAC" onchange="updateDashboard()">
+                        <option value="ALL">Semua AC</option>
+                    </select>
+                    <select class="form-select form-select-sm w-auto fw-medium" id="dashToko" onchange="updateDashboard()">
+                        <option value="ALL">Semua Toko</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row g-3">
+                <div class="col-12 col-md-4">
+                    <div class="data-card p-3 d-flex align-items-center gap-3 border-start border-4 border-primary">
+                        <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+                            <i class="bi bi-shop fs-4"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small fw-semibold">Toko Telah MAP DO IT</div>
+                            <h4 class="fw-bold mb-0" id="dashTokoCount">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="data-card p-3 d-flex align-items-center gap-3 border-start border-4 border-success">
+                        <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle">
+                            <i class="bi bi-check2-square fs-4"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small fw-semibold">Total Pengecekan (Rak)</div>
+                            <h4 class="fw-bold mb-0" id="dashSubmitCount">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="data-card p-3 d-flex align-items-center gap-3 border-start border-4 border-warning">
+                        <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
+                            <i class="bi bi-clock-history fs-4"></i>
+                        </div>
+                        <div>
+                            <div class="text-muted small fw-semibold">Terakhir MAP DO IT</div>
+                            <h6 class="fw-bold mb-0 mt-1" id="dashLastSubmit">-</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h5 class="fw-bold mb-3"><i class="bi bi-list-check me-2 text-primary"></i>Antrean Validasi Data</h5>
+        <div class="toolbar-card mt-0">
             <div class="row g-3 align-items-end">
                 <div class="col-12 col-md-3">
                     <label class="small fw-semibold text-muted mb-1">Cari Nama</label>
