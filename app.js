@@ -1,5 +1,5 @@
-// ===== URL WEB APP ANDA =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwzQAoKLy1_xq0gNMdV2IoGepSF27qp8n_xd21Cc_xXN4QDwPU9dnEy9MANudwGnDbf/exec";
+// ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbynM5xAPwxjTQeoe5L9FDUeq2S4Kf9BR9m4H1QhLx8jgmIM6CC9M8p7Szafw2E2_GOU/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
@@ -9,7 +9,6 @@ let searchTimeout = null;
 document.addEventListener('DOMContentLoaded', () => {
     cekStatusLogin(); 
 
-    // Fitur Debounce untuk pencarian tabel
     ['inputNama', 'inputToko', 'inputTanggal'].forEach(id => {
         const el = document.getElementById(id);
         if(el) {
@@ -66,7 +65,6 @@ async function prosesLogin(e) {
         let finalName = "";
         let finalRole = "";
 
-        // Pengecekan Khusus Admin Akbar Rasyid (Sesuai original kode Anda)
         if (user.toUpperCase() === "AKBAR RASYID" && pass === "0225065474") {
             isSuccess = true;
             finalName = "AKBAR RASYID";
@@ -75,13 +73,15 @@ async function prosesLogin(e) {
         else {
             const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
             const response = await fetch(urlLogin);
+            
+            if (!response.ok) throw new Error("Akses diblokir oleh Google.");
+            
             const result = await response.json();
             
             if (result.success) {
                 isSuccess = true;
                 finalName = result.name;
                 finalRole = result.role;
-                
                 if (finalName.toUpperCase() === "AKBAR RASYID") finalRole = "Admin";
             } else {
                 Swal.fire('Akses Ditolak', result.message, 'error');
@@ -101,7 +101,7 @@ async function prosesLogin(e) {
         }
 
     } catch (err) {
-        Swal.fire('Koneksi Gagal', 'Pastikan internet stabil dan URL Web App valid.', 'error');
+        Swal.fire('Koneksi Gagal', 'Pastikan pengaturan Deployment Web App adalah "Siapa saja" (Anyone).', 'error');
     } finally {
         btn.innerHTML = 'Login Sistem';
         btn.disabled = false;
@@ -140,6 +140,9 @@ function showSkeleton() {
     container.innerHTML = html + (isMobile ? '</div>' : '</div>');
 }
 
+// ===============================================
+// PENANGANAN FETCH YANG DIPERKUAT
+// ===============================================
 async function fetchData() {
     showSkeleton();
     queue = []; updateSubmitBar();
@@ -147,37 +150,53 @@ async function fetchData() {
     try {
         const timeSt = new Date().getTime(); 
         const response = await fetch(`${URL_WEB_APP}?action=getData&_t=${timeSt}`);
-        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(`Gagal menghubungi server (HTTP ${response.status}). Cek URL Deployment Anda.`);
+        }
+
+        const textResponse = await response.text();
+        let result;
+        try {
+            result = JSON.parse(textResponse);
+        } catch (errParse) {
+            throw new Error("Respons diblokir. Pastikan 'Who has access' diatur ke 'Anyone' (Siapa saja).");
+        }
         
         if(result.success === false) {
-             document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Error Server</div><div class="small">${result.message}</div></div>`;
+             document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Error Server Google</div><div class="small">${result.message}</div></div>`;
              return;
         }
         
         allDataRaw = result.data || [];
-        
-        // PENTING: Filter tabel hanya menampilkan yang Validasi-nya masih kosong
         filteredData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
         
-        // Setup & Tampilkan Dashboard
-        setupDashboardFilters();
-        updateDashboard();
-        document.getElementById('dashboardSection').style.display = 'block';
+        try {
+            setupDashboardFilters();
+            updateDashboard();
+            document.getElementById('dashboardSection').style.display = 'block';
+        } catch (errDash) {
+            console.error("Dashboard Render Error: ", errDash);
+        }
 
         renderData(filteredData);
     } catch (err) {
-        document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-wifi-off fs-1 d-block mb-2"></i><div class="fw-bold">Koneksi Terputus</div></div>`;
+        // MENAMPILKAN DETAIL ERROR LANGSUNG DI LAYAR
+        document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
+            <i class="bi bi-wifi-off fs-1 d-block mb-2"></i>
+            <div class="fw-bold">Koneksi Terputus</div>
+            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-1 px-2 rounded d-inline-block">${err.message}</div>
+            <div class="small text-muted mt-2">Solusi: Terapkan (Deploy) ulang Code.gs dan copy URL baru.</div>
+            <button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
+        </div>`;
     }
 }
 
-// ===============================================
-// FUNGSI LOGIKA DASHBOARD
-// ===============================================
+// ... (Fungsi Dashboard & Render Data di bawah ini tetap sama persis) ...
 
 function setupDashboardFilters() {
     const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
     
-    // Populator Fungsi
     const populate = (id, key) => {
         const select = document.getElementById(id);
         const uniqueItems = [...new Set(allDataRaw.map(item => item[key]).filter(v => v))].sort();
@@ -193,7 +212,6 @@ function setupDashboardFilters() {
     populate('dashAC', 'ac');
     populate('dashAM', 'am');
 
-    // Sembunyikan filter AC/AM jika yang login bukan Admin
     if (sesiUser.role !== 'Admin') {
         document.getElementById('dashAC').style.display = 'none';
         document.getElementById('dashAM').style.display = 'none';
@@ -213,23 +231,19 @@ function updateDashboard() {
 
     let dashData = allDataRaw;
 
-    // 1. FILTER BERDASARKAN ROLE LOGIN
     if (sesiUser.role === 'AC') {
         dashData = dashData.filter(i => (i.ac || '').toLowerCase() === sesiUser.name.toLowerCase());
     } else if (sesiUser.role === 'AM') {
         dashData = dashData.filter(i => (i.am || '').toLowerCase() === sesiUser.name.toLowerCase());
     } else {
-        // Admin bisa menggunakan filter dropdown
         if (valAC !== 'ALL') dashData = dashData.filter(i => i.ac === valAC);
         if (valAM !== 'ALL') dashData = dashData.filter(i => i.am === valAM);
     }
 
-    // 2. FILTER TOKO
     if (valToko !== 'ALL') {
         dashData = dashData.filter(i => i.toko === valToko);
     }
 
-    // 3. FILTER WAKTU (MTD/YTD)
     dashData = dashData.filter(item => {
         if(!item.timestamp) return false;
         const itemDate = new Date(item.timestamp.replace(" ", "T")); 
@@ -243,7 +257,6 @@ function updateDashboard() {
         return true;
     });
 
-    // 4. KALKULASI METRIK
     const uniqueTokoCount = new Set(dashData.map(item => item.toko).filter(t=>t)).size;
     const totalSubmit = dashData.length;
     let lastSubmitStr = "-";
@@ -256,15 +269,11 @@ function updateDashboard() {
         }
     }
 
-    // 5. UPDATE TAMPILAN
     document.getElementById('dashTokoCount').innerText = uniqueTokoCount;
     document.getElementById('dashSubmitCount').innerText = totalSubmit;
     document.getElementById('dashLastSubmit').innerText = lastSubmitStr;
 }
 
-// ===============================================
-// RENDER TABEL & CHECKLIST
-// ===============================================
 function parseChecklistGrid(txt) {
     if (!txt) return '<div class="text-muted small fst-italic">Data Kosong</div>';
     const categories = [{ key: "PLANOGRAM", label: "Planogram" }, { key: "LABEL PRICE", label: "Label Price" }, { key: "EXP CHECKED", label: "Expired" }, { key: "CLEANING", label: "Kebersihan" }];
@@ -462,7 +471,6 @@ function runFilter() {
     const t = document.getElementById('inputToko').value.toLowerCase();
     const d = document.getElementById('inputTanggal').value;
     
-    // Pastikan hanya mencari di data yang belum divalidasi
     const unvalidatedData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
 
     filteredData = unvalidatedData.filter(i => 
