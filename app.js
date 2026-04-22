@@ -1,23 +1,35 @@
-// GANTI DENGAN URL DEPLOYMENT TERBARU DARI GOOGLE APPS SCRIPT ANDA
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxq-pBQJXCOcoIVi_oESKM9CRnyMWxaqG0vJWFvHuUy938Ije9ZEvIoT_JvbRdaLZbT/exec";
+// GANTI DENGAN URL DEPLOYMENT TERBARU ANDA
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzXYxvcB_BEE-bZGoDZTZfClTrOyGTaESvFEcgPgsToAh8HX48xRCYOLhJQ4Ax9rwc/exec";
 
 let allDataRaw = [];
 let queue = [];
 let searchTimeout = null; 
 
-// Format Tanggal (Dari DD/MM/YYYY ke Date Object)
-function parseSafeDate(dateStr) {
-    if (!dateStr) return new Date(NaN);
-    let str = dateStr.replace(" ", "T");
-    if (str.includes("/")) {
-        const parts = str.split("T");
-        const dParts = parts[0].split("/");
-        if (dParts.length === 3) str = `${dParts[2]}-${dParts[1]}-${dParts[0]}T${parts[1] || '00:00:00'}`;
-    }
-    return new Date(str);
+// PENCARI KOTAK OTOMATIS (Mencegah Layar Loading Abadi)
+function getContainer() {
+    return document.getElementById('cardContainer') || document.getElementById('dataContainer');
 }
 
-// Mulai otomatis saat web dibuka
+// TRIK BYPASS CORS GOOGLE VIA JSONP
+function fetchJSONP(url) {
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            resolve(data);
+        };
+        const script = document.createElement('script');
+        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+        script.onerror = () => {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            reject(new Error("Koneksi gagal. Pastikan tab ini sudah login ke akun Google perusahaan Anda."));
+        };
+        document.body.appendChild(script);
+    });
+}
+
 window.onload = () => {
     setupEventListeners();
     fetchData();
@@ -35,8 +47,9 @@ function setupEventListeners() {
 }
 
 function showSkeleton() {
-    const container = document.getElementById('cardContainer');
-    if (!container) return;
+    const container = getContainer();
+    if (!container) return; // Aman dari error null
+    
     const isMobile = window.innerWidth < 768;
     let html = isMobile ? '<div class="row">' : '<div class="data-card p-4">';
     for(let i=0; i<3; i++) {
@@ -46,47 +59,45 @@ function showSkeleton() {
     container.innerHTML = html + (isMobile ? '</div>' : '</div>');
 }
 
-// 1. PENGAMBILAN DATA
+// 1. PENGAMBILAN DATA (Menggunakan JSONP)
 async function fetchData() {
     showSkeleton(); queue = []; updateSubmitBar();
     try {
-        // Menggunakan standard fetch tanpa no-cors untuk mendapatkan balasan JSON yang utuh
-        const response = await fetch(URL_WEB_APP);
-        const result = await response.json();
+        const fetchUrl = `${URL_WEB_APP}?action=getData`;
+        const result = await fetchJSONP(fetchUrl);
         
         if (result.success) {
-            // Saring data yang kolom "validasi" nya masih kosong
             allDataRaw = (result.data || []).filter(i => !i.validasi || i.validasi === "");
             populateDropdowns();
-            runFilter(); // Otomatis render & filter
+            runFilter(); 
         } else {
             throw new Error(result.message || "Gagal mengambil data");
         }
     } catch (err) {
         console.error("Fetch Error:", err);
-        const cont = document.getElementById('cardContainer');
-        cont.innerHTML = `
-            <div class="text-center text-danger py-5">
-                <i class="bi bi-shield-x fs-1 d-block mb-2"></i>
-                <div class="fw-bold">Akses Diblokir oleh Google</div>
-                <div class="small mt-2 mx-auto" style="max-width: 400px; text-align: left;">
-                    <b>Solusi Wajib:</b> Buka Google Apps Script > Klik Deploy > New Deployment. Pada bagian <b>"Who has access"</b>, pastikan Anda memilih <b>"Anyone"</b>. Jangan pilih "Anyone with Google Account".
-                </div>
-            </div>`;
+        const cont = getContainer();
+        if(cont) {
+            cont.innerHTML = `
+                <div class="text-center text-danger py-5">
+                    <i class="bi bi-shield-x fs-1 d-block mb-2"></i>
+                    <div class="fw-bold">Akses Diblokir / Terputus</div>
+                    <div class="small mt-2 mx-auto" style="max-width: 400px;">
+                        ${err.message}
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
+                </div>`;
+        }
     }
 }
 
-// Mengisi Dropdown AC & AM secara otomatis dari data yang ada
 function populateDropdowns() {
     const acSelect = document.getElementById('filterAC');
     const amSelect = document.getElementById('filterAM');
     if(!acSelect || !amSelect) return;
 
-    // Ambil data unik
     const uniqueAC = [...new Set(allDataRaw.map(item => item.ac).filter(v => v !== ""))].sort();
     const uniqueAM = [...new Set(allDataRaw.map(item => item.am).filter(v => v !== ""))].sort();
 
-    // Simpan pilihan sebelumnya jika ada
     const currAC = acSelect.value;
     const currAM = amSelect.value;
 
@@ -120,7 +131,7 @@ function runFilter() {
 
 // 3. MERENDER DATA DENGAN DESAIN COMPACT CARD
 function renderTable(data) {
-    const container = document.getElementById('cardContainer');
+    const container = getContainer();
     if(!container) return; 
     container.innerHTML = '';
 
@@ -214,9 +225,7 @@ async function kirimData() {
     
     Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     try {
-        // Mode 'no-cors' digunakan pada POST agar bisa mengirim (menyimpan) tanpa dicekal browser
         await fetch(URL_WEB_APP, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(queue) });
-        
         setTimeout(() => { 
             Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false, returnFocus: false }); 
             resetPilihan(); fetchData(); 
