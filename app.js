@@ -1,10 +1,30 @@
 // ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzSk0EE-Mg-IP5aEGs1hdG789DrylCjH3DPQK9KU3U-HryUWfoz-uZxBgilTbg59Lm1/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwiuE7304Z-0LMqcuciMJz3jCp7XJjC5G0LB_GyLQ_PCqsPifRnfjafS4DS8lOu3LnQ/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
 let queue = [];
 let searchTimeout = null; 
+
+// ---> TRIK BYPASS KEAMANAN GOOGLE (JSONP) <---
+function fetchJSONP(url) {
+    return new Promise((resolve, reject) => {
+        const callbackName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+        window[callbackName] = function(data) {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            resolve(data);
+        };
+        const script = document.createElement('script');
+        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
+        script.onerror = () => {
+            delete window[callbackName];
+            document.body.removeChild(script);
+            reject(new Error("Keamanan Google Workspace memblokir koneksi."));
+        };
+        document.body.appendChild(script);
+    });
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     cekStatusLogin(); 
@@ -52,21 +72,15 @@ async function prosesLogin(e) {
 
     try {
         let isSuccess = false; let finalName = ""; let finalRole = "";
+
         if (user.toUpperCase() === "AKBAR RASYID" && pass === "0225065474") {
             isSuccess = true; finalName = "AKBAR RASYID"; finalRole = "Admin";
-        } else {
+        } 
+        else {
             const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
-            const response = await fetch(urlLogin);
             
-            // PELACAK ERROR CANGGIH
-            if (!response.ok) throw new Error("Akses HTTP diblokir.");
-            const textResponse = await response.text();
-            let result;
-            try { 
-                result = JSON.parse(textResponse); 
-            } catch (e) { 
-                throw new Error("Sistem Google Meminta Login. Pastikan Anda mengatur Deploy 'Execute As: Me' dan 'Who has access: Anyone'."); 
-            }
+            // Menggunakan bypass JSONP
+            const result = await fetchJSONP(urlLogin);
             
             if (result.success) {
                 isSuccess = true; finalName = result.name; finalRole = result.role;
@@ -75,13 +89,19 @@ async function prosesLogin(e) {
                 Swal.fire('Akses Ditolak', result.message, 'error');
             }
         }
+
         if (isSuccess) {
             localStorage.setItem('sesiLoginMAP', JSON.stringify({ name: finalName, role: finalRole }));
             Swal.fire({ icon: 'success', title: finalRole === 'Admin' ? 'Mode Admin Aktif' : 'Login Berhasil', text: `Selamat bertugas, ${finalName}`, timer: 1500, showConfirmButton: false });
             setTimeout(() => { cekStatusLogin(); }, 1200);
         }
-    } catch (err) { Swal.fire('Koneksi Gagal', err.message, 'error'); } 
-    finally { btn.innerHTML = 'Login Sistem'; btn.disabled = false; }
+
+    } catch (err) {
+        Swal.fire('Koneksi Gagal', 'Pastikan link URL sudah diupdate ke versi Deploy terbaru.', 'error');
+    } finally {
+        btn.innerHTML = 'Login Sistem';
+        btn.disabled = false;
+    }
 }
 
 function prosesLogout() {
@@ -106,17 +126,8 @@ async function fetchData() {
     showSkeleton(); queue = []; updateSubmitBar();
     try {
         const timeSt = new Date().getTime(); 
-        const response = await fetch(`${URL_WEB_APP}?action=getData&_t=${timeSt}`);
-        
-        if (!response.ok) throw new Error(`HTTP Error ${response.status}.`);
-        
-        const textResponse = await response.text();
-        let result;
-        try { 
-            result = JSON.parse(textResponse); 
-        } catch (errParse) { 
-            throw new Error(`Google Apps Script memblokir koneksi dan mengirim format HTML. Anda harus mengulang Deploy dengan setting 'Execute As: Me' dan 'Who has access: Anyone'.`); 
-        }
+        // Menggunakan bypass JSONP
+        const result = await fetchJSONP(`${URL_WEB_APP}?action=getData&_t=${timeSt}`);
         
         if(result.success === false) {
              document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Error Server Google</div><div class="small">${result.message}</div></div>`;
@@ -128,11 +139,12 @@ async function fetchData() {
         
         try { setupDashboardFilters(); updateDashboard(); document.getElementById('dashboardSection').style.display = 'block'; } catch (errDash) {}
         renderData(filteredData);
+
     } catch (err) {
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
             <i class="bi bi-shield-lock fs-1 d-block mb-2"></i>
             <div class="fw-bold">Gagal Mengambil Data</div>
-            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">${err.message}</div>
+            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">Gagal melewati keamanan Google.</div>
             <button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
         </div>`;
     }
