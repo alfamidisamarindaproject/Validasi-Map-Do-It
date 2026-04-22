@@ -6,6 +6,11 @@ let filteredData = [];
 let queue = [];
 let searchTimeout = null; 
 
+// Fungsi Pembantu untuk mencari wadah data di HTML secara otomatis
+function getContainer() {
+    return document.getElementById('dataContainer') || document.getElementById('cardContainer');
+}
+
 // ==========================================
 // 1. SISTEM BYPASS KONEKSI (JSONP) & PARSER
 // ==========================================
@@ -70,7 +75,7 @@ function cekStatusLogin() {
 
 async function prosesLogin(e) {
     e.preventDefault();
-    if (document.activeElement) document.activeElement.blur(); // Mencegah error aria-hidden
+    if (document.activeElement) document.activeElement.blur(); 
 
     const user = document.getElementById('logUsername').value.trim();
     const pass = document.getElementById('logPassword').value.trim();
@@ -119,8 +124,10 @@ function prosesLogout() {
 // 3. PENGAMBILAN DATA & DASHBOARD
 // ==========================================
 function showSkeleton() {
+    const container = getContainer();
+    if (!container) return; // Mencegah Error Null
+
     const isMobile = window.innerWidth < 768;
-    const container = document.getElementById('dataContainer');
     let html = isMobile ? '<div class="row">' : '<div class="data-card p-4">';
     for(let i=0; i<3; i++) {
         if(isMobile) html += `<div class="col-12"><div class="data-card p-3 mb-3 placeholder-glow"><span class="placeholder col-4 mb-2 rounded"></span><br><span class="placeholder col-8 rounded mb-3"></span><div class="placeholder col-12 rounded" style="height: 60px;"></div></div></div>`;
@@ -137,7 +144,8 @@ async function fetchData() {
         const result = await fetchJSONP(fetchUrl);
         
         if(result.success === false) {
-             document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Gagal Membaca Sheet</div><div class="small mt-2">${result.message}</div></div>`;
+             const cont = getContainer();
+             if(cont) cont.innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Gagal Membaca Sheet</div><div class="small mt-2">${result.message}</div></div>`;
              return;
         }
         
@@ -147,7 +155,8 @@ async function fetchData() {
         try { setupDashboardFilters(); updateDashboard(); document.getElementById('dashboardSection').style.display = 'block'; } catch (e) {}
         renderData(filteredData);
     } catch (err) {
-        document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-wifi-off fs-1 d-block mb-2"></i><div class="fw-bold">Akses Terputus</div><div class="small mt-2">Pastikan internet stabil dan akun Google Anda login di browser ini.</div><br><button class="btn btn-sm btn-outline-primary" onclick="fetchData()">Coba Lagi</button></div>`;
+        const cont = getContainer();
+        if(cont) cont.innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-wifi-off fs-1 d-block mb-2"></i><div class="fw-bold">Akses Terputus</div><div class="small mt-2">Pastikan internet stabil dan akun Google Anda login di browser ini.</div><br><button class="btn btn-sm btn-outline-primary" onclick="fetchData()">Coba Lagi</button></div>`;
     }
 }
 
@@ -155,6 +164,7 @@ function setupDashboardFilters() {
     const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
     const populate = (id, key) => {
         const select = document.getElementById(id);
+        if(!select) return;
         const uniqueItems = [...new Set(allDataRaw.map(item => item[key]).filter(v => v))].sort();
         const currVal = select.value;
         select.innerHTML = `<option value="ALL">Semua ${key.toUpperCase()}</option>`;
@@ -162,14 +172,18 @@ function setupDashboardFilters() {
         if(uniqueItems.includes(currVal)) select.value = currVal;
     };
     populate('dashToko', 'toko'); populate('dashAC', 'ac'); populate('dashAM', 'am');
-    if (sesiUser.role !== 'Admin') { document.getElementById('dashAC').style.display = 'none'; document.getElementById('dashAM').style.display = 'none'; }
+    if (sesiUser.role !== 'Admin') { 
+        if(document.getElementById('dashAC')) document.getElementById('dashAC').style.display = 'none'; 
+        if(document.getElementById('dashAM')) document.getElementById('dashAM').style.display = 'none'; 
+    }
 }
 
 function updateDashboard() {
-    const period = document.getElementById('dashPeriod').value;
-    const valToko = document.getElementById('dashToko').value;
-    const valAC = document.getElementById('dashAC').value;
-    const valAM = document.getElementById('dashAM').value;
+    const period = document.getElementById('dashPeriod') ? document.getElementById('dashPeriod').value : 'MTD';
+    const valToko = document.getElementById('dashToko') ? document.getElementById('dashToko').value : 'ALL';
+    const valAC = document.getElementById('dashAC') ? document.getElementById('dashAC').value : 'ALL';
+    const valAM = document.getElementById('dashAM') ? document.getElementById('dashAM').value : 'ALL';
+    
     const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
     const now = new Date(); const currentYear = now.getFullYear(); const currentMonth = now.getMonth();
     let dashData = allDataRaw;
@@ -191,15 +205,15 @@ function updateDashboard() {
         return true;
     });
     
-    document.getElementById('dashTokoCount').innerText = new Set(dashData.map(item => item.toko).filter(t=>t)).size;
-    document.getElementById('dashSubmitCount').innerText = dashData.length;
+    if(document.getElementById('dashTokoCount')) document.getElementById('dashTokoCount').innerText = new Set(dashData.map(item => item.toko).filter(t=>t)).size;
+    if(document.getElementById('dashSubmitCount')) document.getElementById('dashSubmitCount').innerText = dashData.length;
     
     let lastSubmitStr = "-";
     if (dashData.length > 0) {
         const dates = dashData.map(item => parseSafeDate(item.timestamp).getTime()).filter(t => !isNaN(t));
         if(dates.length > 0) lastSubmitStr = new Date(Math.max(...dates)).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' });
     }
-    document.getElementById('dashLastSubmit').innerText = lastSubmitStr;
+    if(document.getElementById('dashLastSubmit')) document.getElementById('dashLastSubmit').innerText = lastSubmitStr;
 }
 
 // ==========================================
@@ -221,8 +235,9 @@ function parseChecklistCompact(txt) {
 }
 
 function renderData(data) {
-    const container = document.getElementById('dataContainer');
-    if(!container) return;
+    const container = getContainer();
+    if(!container) return; // Mencegah Error Null
+    
     container.innerHTML = '';
 
     if (!data || data.length === 0) {
@@ -294,7 +309,7 @@ function updateSubmitBar() {
     const bar = document.getElementById('submitBar'); 
     const countEl = document.getElementById('countSelected');
     if(countEl) countEl.innerText = queue.length; 
-    if (queue.length > 0) bar.classList.add('show'); else bar.classList.remove('show'); 
+    if (queue.length > 0 && bar) bar.classList.add('show'); else if(bar) bar.classList.remove('show'); 
 }
 
 async function kirimData() {
@@ -318,7 +333,9 @@ async function kirimData() {
 // ==========================================
 function bukaPopup(url) {
     if(!url || url.length < 10) return Swal.fire({ icon: 'info', title: 'Informasi', text: 'Tidak ada lampiran foto.', returnFocus: false });
-    const myModal = new bootstrap.Modal(document.getElementById('modalFoto'));
+    const modalEl = document.getElementById('modalFoto');
+    if(!modalEl) return;
+    const myModal = new bootstrap.Modal(modalEl);
     const imgEl = document.getElementById('frameFoto'); const loadEl = document.getElementById('loadingGambar');
     
     let finalUrl = url; const match = url.match(/[-\w]{25,}/);
