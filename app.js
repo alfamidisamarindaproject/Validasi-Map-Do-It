@@ -1,5 +1,5 @@
 // ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwiuE7304Z-0LMqcuciMJz3jCp7XJjC5G0LB_GyLQ_PCqsPifRnfjafS4DS8lOu3LnQ/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzXYxvcB_BEE-bZGoDZTZfClTrOyGTaESvFEcgPgsToAh8HX48xRCYOLhJQ4Ax9rwc/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
