@@ -1,29 +1,21 @@
 // ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwiuE7304Z-0LMqcuciMJz3jCp7XJjC5G0LB_GyLQ_PCqsPifRnfjafS4DS8lOu3LnQ/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyoXXEoJJDHztHNO5jJXcwvGuk40bpYw5pnMqCwMAWvOhJzt8vu84aWLF9GjdMMzxNk/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
 let queue = [];
 let searchTimeout = null; 
 
-// ---> TRIK BYPASS KEAMANAN GOOGLE (JSONP) <---
-function fetchJSONP(url) {
-    return new Promise((resolve, reject) => {
-        const callbackName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-        window[callbackName] = function(data) {
-            delete window[callbackName];
-            document.body.removeChild(script);
-            resolve(data);
-        };
-        const script = document.createElement('script');
-        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
-        script.onerror = () => {
-            delete window[callbackName];
-            document.body.removeChild(script);
-            reject(new Error("Keamanan Google Workspace memblokir koneksi."));
-        };
-        document.body.appendChild(script);
-    });
+// ---> PENGAMBILAN DATA STANDAR (MENGGANTIKAN JSONP) <---
+async function fetchGAS(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Terjadi masalah pada koneksi ke server Google.");
+        return await response.json();
+    } catch (error) {
+        console.error("Fetch Error:", error);
+        throw error;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -73,14 +65,15 @@ async function prosesLogin(e) {
     try {
         let isSuccess = false; let finalName = ""; let finalRole = "";
 
+        // Bypass local superadmin
         if (user.toUpperCase() === "AKBAR RASYID" && pass === "0225065474") {
             isSuccess = true; finalName = "AKBAR RASYID"; finalRole = "Admin";
         } 
         else {
             const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
             
-            // Menggunakan bypass JSONP
-            const result = await fetchJSONP(urlLogin);
+            // Panggil API GSheet
+            const result = await fetchGAS(urlLogin);
             
             if (result.success) {
                 isSuccess = true; finalName = result.name; finalRole = result.role;
@@ -97,7 +90,7 @@ async function prosesLogin(e) {
         }
 
     } catch (err) {
-        Swal.fire('Koneksi Gagal', 'Pastikan link URL sudah diupdate ke versi Deploy terbaru.', 'error');
+        Swal.fire('Koneksi Gagal', 'Gagal menghubungkan aplikasi ke Spreadsheet.', 'error');
     } finally {
         btn.innerHTML = 'Login Sistem';
         btn.disabled = false;
@@ -126,8 +119,9 @@ async function fetchData() {
     showSkeleton(); queue = []; updateSubmitBar();
     try {
         const timeSt = new Date().getTime(); 
-        // Menggunakan bypass JSONP
-        const result = await fetchJSONP(`${URL_WEB_APP}?action=getData&_t=${timeSt}`);
+        const fetchUrl = `${URL_WEB_APP}?action=getData&_t=${timeSt}`;
+        
+        const result = await fetchGAS(fetchUrl);
         
         if(result.success === false) {
              document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Error Server Google</div><div class="small">${result.message}</div></div>`;
@@ -144,7 +138,7 @@ async function fetchData() {
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
             <i class="bi bi-shield-lock fs-1 d-block mb-2"></i>
             <div class="fw-bold">Gagal Mengambil Data</div>
-            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">Gagal melewati keamanan Google.</div>
+            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">Periksa URL Web App atau Pengaturan Share Sheet.</div>
             <button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
         </div>`;
     }
