@@ -6,7 +6,7 @@ let filteredData = [];
 let queue = [];
 let searchTimeout = null; 
 
-// ---> TRIK BYPASS KEAMANAN GOOGLE VIA JSONP <---
+// ---> TRIK BYPASS CORS GOOGLE VIA JSONP (Tanpa Fetch) <---
 function fetchJSONP(url) {
     return new Promise((resolve, reject) => {
         const callbackName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
@@ -20,7 +20,7 @@ function fetchJSONP(url) {
         script.onerror = () => {
             delete window[callbackName];
             document.body.removeChild(script);
-            reject(new Error("Gagal terhubung. Pastikan Anda sudah login ke akun Google perusahaan di browser ini."));
+            reject(new Error("Gagal terhubung. Pastikan Anda sudah login ke akun Google di tab ini."));
         };
         document.body.appendChild(script);
     });
@@ -83,6 +83,8 @@ async function prosesLogin(e) {
         } 
         else {
             const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
+            
+            // PENTING: Memanggil fetchJSONP, BUKAN fetch()
             const result = await fetchJSONP(urlLogin);
             
             if (result.success) {
@@ -131,6 +133,7 @@ async function fetchData() {
         const timeSt = new Date().getTime(); 
         const fetchUrl = `${URL_WEB_APP}?action=getData&_t=${timeSt}`;
         
+        // PENTING: Memanggil fetchJSONP, BUKAN fetch()
         const result = await fetchJSONP(fetchUrl);
         
         if(result.success === false) {
@@ -148,7 +151,7 @@ async function fetchData() {
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
             <i class="bi bi-shield-lock fs-1 d-block mb-2"></i>
             <div class="fw-bold">Akses Diblokir</div>
-            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start" style="max-width: 400px;">Sistem keamanan Google Workspace sedang aktif. Pastikan Anda sudah login ke akun Google perusahaan Anda di tab browser ini.</div>
+            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start" style="max-width: 400px;">Gagal terhubung. Pastikan Anda sudah login ke akun Google di tab browser ini.</div>
             <br><button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
         </div>`;
     }
