@@ -1,5 +1,5 @@
 // ===== URL WEB APP ANDA =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwN-DMvo0HBiX9nsqEyNVEoiuMw1-5f2LrbokdxXBIIu0EDOrYJdN0OwQvmqjQoF5YGvw/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyEImukK75siuKSSEWeR-IDvgyQFP0a6CuCPewlMt4boqWemorCiaalEPI7_Y0h8-zXCA/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
@@ -26,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ==========================================
-// 1. FITUR LOGIN (YANG SEBELUMNYA HILANG)
+// 1. FITUR LOGIN
 // ==========================================
 async function prosesLogin(e) {
     e.preventDefault();
@@ -102,7 +102,7 @@ function cekStatusLogin() {
 }
 
 // ==========================================
-// 3. AMBIL DATA DARI SERVER
+// 3. AMBIL DATA DARI SERVER (UPDATE FITUR TERBARU)
 // ==========================================
 async function fetchData() {
     showSkeleton();
@@ -111,7 +111,14 @@ async function fetchData() {
 
     try {
         const timeSt = new Date().getTime(); 
-        const response = await fetch(`${URL_WEB_APP}?action=getData&_t=${timeSt}`);
+        
+        // --- FITUR TERBARU: Menarik Data Sesi User ---
+        const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
+        const reqUser = encodeURIComponent(sesiUser.name);
+        const reqRole = encodeURIComponent(sesiUser.role);
+
+        // --- Mengirim username & role ke parameter URL ---
+        const response = await fetch(`${URL_WEB_APP}?action=getData&username=${reqUser}&role=${reqRole}&_t=${timeSt}`);
         const result = await response.json();
         
         if(result.success === false) {
@@ -151,7 +158,8 @@ function renderData(data) {
     container.innerHTML = '';
 
     if (!data || data.length === 0) {
-        container.innerHTML = `<div class="text-center py-5 text-muted"><div class="d-inline-flex justify-content-center align-items-center bg-light rounded-circle mb-3" style="width: 80px; height: 80px;"><i class="bi bi-inbox fs-1 text-secondary"></i></div><h6 class="fw-bold">Semua Selesai!</h6><p class="small">Tidak ada data untuk divalidasi saat ini.</p></div>`;
+        // Teks disesuaikan jika data area kosong
+        container.innerHTML = `<div class="text-center py-5 text-muted"><div class="d-inline-flex justify-content-center align-items-center bg-light rounded-circle mb-3" style="width: 80px; height: 80px;"><i class="bi bi-inbox fs-1 text-secondary"></i></div><h6 class="fw-bold">Semua Selesai!</h6><p class="small">Tidak ada data untuk divalidasi di area Anda saat ini.</p></div>`;
         return;
     }
 
@@ -252,7 +260,6 @@ function runFilter() {
     const t = document.getElementById('inputToko').value.toLowerCase();
     const dRaw = document.getElementById('inputTanggal').value;
     
-    // Perbaikan format tanggal: dari YYYY-MM-DD ke DD/MM/YYYY agar cocok dgn GSheet
     let dFormatted = "";
     if (dRaw) {
         const parts = dRaw.split('-');
@@ -268,7 +275,6 @@ function runFilter() {
     
     renderData(filteredData);
     
-    // Pastikan data yang sudah masuk queue tetap terlihat transparan / checked setelah difilter
     setTimeout(() => {
         queue.forEach(q => {
             const rbMob = document.getElementById(`${q.status.toLowerCase()}-mob-${q.row}`);
@@ -332,5 +338,5 @@ function prosesLogout() {
 }
 
 function showSkeleton() {
-    document.getElementById('dataContainer').innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted fw-medium">Sinkronisasi Data...</div></div>`;
+    document.getElementById('dataContainer').innerHTML = `<div class="text-center py-5"><div class="spinner-border text-primary"></div><div class="mt-2 text-muted fw-medium">Sinkronisasi Area Anda...</div></div>`;
 }
