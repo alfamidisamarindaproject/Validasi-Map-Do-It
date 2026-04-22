@@ -1,4 +1,4 @@
-// ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
+// ===== URL WEB APP ANDA =====
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbynM5xAPwxjTQeoe5L9FDUeq2S4Kf9BR9m4H1QhLx8jgmIM6CC9M8p7Szafw2E2_GOU/exec";
 
 let allDataRaw = [];
@@ -37,12 +37,7 @@ function cekStatusLogin() {
         const inisial = userData.name.charAt(0).toUpperCase();
         const avatarEl = document.getElementById('avatarInisial');
         avatarEl.innerText = inisial;
-        
-        if (userData.role === 'Admin') {
-            avatarEl.classList.add('admin-avatar');
-        } else {
-            avatarEl.classList.remove('admin-avatar');
-        }
+        avatarEl.classList.toggle('admin-avatar', userData.role === 'Admin');
         
         fetchData(); 
     } else {
@@ -74,9 +69,15 @@ async function prosesLogin(e) {
             const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
             const response = await fetch(urlLogin);
             
-            if (!response.ok) throw new Error("Akses diblokir oleh Google.");
+            if (!response.ok) throw new Error("Akses HTTP diblokir oleh Google.");
             
-            const result = await response.json();
+            const textResponse = await response.text();
+            let result;
+            try {
+                result = JSON.parse(textResponse);
+            } catch (e) {
+                throw new Error("Google meminta Login. Pastikan Jalankan Sebagai: SAYA (Me).");
+            }
             
             if (result.success) {
                 isSuccess = true;
@@ -101,7 +102,7 @@ async function prosesLogin(e) {
         }
 
     } catch (err) {
-        Swal.fire('Koneksi Gagal', 'Pastikan pengaturan Deployment Web App adalah "Siapa saja" (Anyone).', 'error');
+        Swal.fire('Koneksi Gagal', err.message, 'error');
     } finally {
         btn.innerHTML = 'Login Sistem';
         btn.disabled = false;
@@ -141,7 +142,7 @@ function showSkeleton() {
 }
 
 // ===============================================
-// PENANGANAN FETCH YANG DIPERKUAT
+// PENANGANAN FETCH BYPASS CANGGIH
 // ===============================================
 async function fetchData() {
     showSkeleton();
@@ -152,15 +153,19 @@ async function fetchData() {
         const response = await fetch(`${URL_WEB_APP}?action=getData&_t=${timeSt}`);
         
         if (!response.ok) {
-            throw new Error(`Gagal menghubungi server (HTTP ${response.status}). Cek URL Deployment Anda.`);
+            throw new Error(`HTTP Error ${response.status}: Periksa URL Web App.`);
         }
 
         const textResponse = await response.text();
         let result;
+        
         try {
+            // Coba mengubah respon ke Data JSON
             result = JSON.parse(textResponse);
         } catch (errParse) {
-            throw new Error("Respons diblokir. Pastikan 'Who has access' diatur ke 'Anyone' (Siapa saja).");
+            // JIKA GAGAL: Google mengirim Halaman HTML (Blokir Akses)
+            let snippet = textResponse.substring(0, 80).replace(/</g, "&lt;");
+            throw new Error(`Sistem Google Memblokir Data. (Terdeteksi HTML: ${snippet}...)`);
         }
         
         if(result.success === false) {
@@ -181,18 +186,17 @@ async function fetchData() {
 
         renderData(filteredData);
     } catch (err) {
-        // MENAMPILKAN DETAIL ERROR LANGSUNG DI LAYAR
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
-            <i class="bi bi-wifi-off fs-1 d-block mb-2"></i>
-            <div class="fw-bold">Koneksi Terputus</div>
-            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-1 px-2 rounded d-inline-block">${err.message}</div>
-            <div class="small text-muted mt-2">Solusi: Terapkan (Deploy) ulang Code.gs dan copy URL baru.</div>
+            <i class="bi bi-shield-lock fs-1 d-block mb-2"></i>
+            <div class="fw-bold">Akses Diblokir oleh Google</div>
+            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">
+                <strong>Detail Error:</strong><br>${err.message}
+            </div>
+            <div class="small text-muted mt-3">Silakan cek <b>Aturan Deploy</b> (Execute as: Me).</div>
             <button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
         </div>`;
     }
 }
-
-// ... (Fungsi Dashboard & Render Data di bawah ini tetap sama persis) ...
 
 function setupDashboardFilters() {
     const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
@@ -202,15 +206,11 @@ function setupDashboardFilters() {
         const uniqueItems = [...new Set(allDataRaw.map(item => item[key]).filter(v => v))].sort();
         const currVal = select.value;
         select.innerHTML = `<option value="ALL">Semua ${key.toUpperCase()}</option>`;
-        uniqueItems.forEach(val => {
-            select.innerHTML += `<option value="${val}">${val}</option>`;
-        });
+        uniqueItems.forEach(val => { select.innerHTML += `<option value="${val}">${val}</option>`; });
         if(uniqueItems.includes(currVal)) select.value = currVal;
     };
 
-    populate('dashToko', 'toko');
-    populate('dashAC', 'ac');
-    populate('dashAM', 'am');
+    populate('dashToko', 'toko'); populate('dashAC', 'ac'); populate('dashAM', 'am');
 
     if (sesiUser.role !== 'Admin') {
         document.getElementById('dashAC').style.display = 'none';
@@ -224,36 +224,25 @@ function updateDashboard() {
     const valAC = document.getElementById('dashAC').value;
     const valAM = document.getElementById('dashAM').value;
     const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
+    const now = new Date(); const currentYear = now.getFullYear(); const currentMonth = now.getMonth();
 
     let dashData = allDataRaw;
 
-    if (sesiUser.role === 'AC') {
-        dashData = dashData.filter(i => (i.ac || '').toLowerCase() === sesiUser.name.toLowerCase());
-    } else if (sesiUser.role === 'AM') {
-        dashData = dashData.filter(i => (i.am || '').toLowerCase() === sesiUser.name.toLowerCase());
-    } else {
+    if (sesiUser.role === 'AC') dashData = dashData.filter(i => (i.ac || '').toLowerCase() === sesiUser.name.toLowerCase());
+    else if (sesiUser.role === 'AM') dashData = dashData.filter(i => (i.am || '').toLowerCase() === sesiUser.name.toLowerCase());
+    else {
         if (valAC !== 'ALL') dashData = dashData.filter(i => i.ac === valAC);
         if (valAM !== 'ALL') dashData = dashData.filter(i => i.am === valAM);
     }
 
-    if (valToko !== 'ALL') {
-        dashData = dashData.filter(i => i.toko === valToko);
-    }
+    if (valToko !== 'ALL') dashData = dashData.filter(i => i.toko === valToko);
 
     dashData = dashData.filter(item => {
         if(!item.timestamp) return false;
         const itemDate = new Date(item.timestamp.replace(" ", "T")); 
         if(isNaN(itemDate)) return false;
-
-        if (period === 'MTD') {
-            return itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth;
-        } else if (period === 'YTD') {
-            return itemDate.getFullYear() === currentYear;
-        }
+        if (period === 'MTD') return itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth;
+        else if (period === 'YTD') return itemDate.getFullYear() === currentYear;
         return true;
     });
 
@@ -277,7 +266,6 @@ function updateDashboard() {
 function parseChecklistGrid(txt) {
     if (!txt) return '<div class="text-muted small fst-italic">Data Kosong</div>';
     const categories = [{ key: "PLANOGRAM", label: "Planogram" }, { key: "LABEL PRICE", label: "Label Price" }, { key: "EXP CHECKED", label: "Expired" }, { key: "CLEANING", label: "Kebersihan" }];
-    
     let html = '<div class="check-grid">';
     categories.forEach(cat => {
         const isOK = new RegExp(`${cat.key}\\s+OK`, 'i').test(txt);
@@ -290,14 +278,12 @@ function parseChecklistGrid(txt) {
 function renderData(data) {
     const container = document.getElementById('dataContainer');
     container.innerHTML = '';
-
     if (!data || data.length === 0) {
         container.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-inbox" style="font-size: 3rem; color: #CBD5E1;"></i><h6 class="fw-semibold mt-3">Tidak ada data untuk divalidasi.</h6></div>`;
         return;
     }
 
     const isMobile = window.innerWidth < 768; 
-
     if (isMobile) {
         let htmlCards = `<div class="row">`;
         data.forEach(item => {
@@ -323,13 +309,10 @@ function renderData(data) {
                                 <i class="bi bi-image text-primary"></i>
                             </button>
                         </div>
-                        
                         ${parseChecklistGrid(item.checklist)}
-                        
                         <div class="validation-group mt-3">
                             <input type="radio" class="btn-check" name="row-mob-${item.row}" id="ok-mob-${item.row}" ${okC} onchange="handleQueue(${item.row}, 'OK')">
                             <label class="btn btn-outline-success text-center" for="ok-mob-${item.row}">OK</label>
-
                             <input type="radio" class="btn-check" name="row-mob-${item.row}" id="nok-mob-${item.row}" ${nokC} onchange="handleQueue(${item.row}, 'NOK')">
                             <label class="btn btn-outline-danger text-center" for="nok-mob-${item.row}">NOK</label>
                         </div>
@@ -338,24 +321,9 @@ function renderData(data) {
             </div>`;
         });
         container.innerHTML = htmlCards + `</div>`;
-
     } else {
-        let htmlTable = `
-        <div class="data-card">
-            <div class="table-responsive">
-                <table class="table table-custom table-hover align-middle">
-                    <thead>
-                        <tr>
-                            <th width="10%">Waktu</th>
-                            <th width="20%">Personil</th>
-                            <th width="10%">Toko</th>
-                            <th width="30%">Checklist</th>
-                            <th width="10%" class="text-center">Lampiran</th>
-                            <th width="20%" class="text-center">Aksi Validasi</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-        
+        let htmlTable = `<div class="data-card"><div class="table-responsive"><table class="table table-custom table-hover align-middle">
+            <thead><tr><th width="10%">Waktu</th><th width="20%">Personil</th><th width="10%">Toko</th><th width="30%">Checklist</th><th width="10%" class="text-center">Lampiran</th><th width="20%" class="text-center">Aksi Validasi</th></tr></thead><tbody>`;
         data.forEach(item => {
             const inQueue = queue.find(q => q.row === item.row);
             const statusClass = inQueue ? 'item-done' : ''; 
@@ -365,26 +333,16 @@ function renderData(data) {
             htmlTable += `
                 <tr class="${statusClass}" id="row-${item.row}">
                     <td class="text-muted small">${(item.timestamp||'').split(' ')[0] || '-'}</td>
-                    <td>
-                        <div class="fw-bold text-dark">${item.nama || '-'}</div>
-                        <div class="small text-muted">Rak: ${item.rak || '-'}</div>
-                    </td>
+                    <td><div class="fw-bold text-dark">${item.nama || '-'}</div><div class="small text-muted">Rak: ${item.rak || '-'}</div></td>
                     <td><span class="badge bg-light text-primary border">${item.toko || '-'}</span></td>
                     <td>${parseChecklistGrid(item.checklist)}</td>
-                    <td class="text-center">
-                        <button class="btn btn-light border btn-sm" onclick="bukaPopup('${item.foto}')">
-                            <i class="bi bi-image text-primary"></i> Lihat
-                        </button>
-                    </td>
-                    <td class="px-3">
-                        <div class="validation-group">
-                            <input type="radio" class="btn-check" name="row-desk-${item.row}" id="ok-desk-${item.row}" ${okC} onchange="handleQueue(${item.row}, 'OK')">
-                            <label class="btn btn-outline-success text-center" for="ok-desk-${item.row}">OK</label>
-
-                            <input type="radio" class="btn-check" name="row-desk-${item.row}" id="nok-desk-${item.row}" ${nokC} onchange="handleQueue(${item.row}, 'NOK')">
-                            <label class="btn btn-outline-danger text-center" for="nok-desk-${item.row}">NOK</label>
-                        </div>
-                    </td>
+                    <td class="text-center"><button class="btn btn-light border btn-sm" onclick="bukaPopup('${item.foto}')"><i class="bi bi-image text-primary"></i> Lihat</button></td>
+                    <td class="px-3"><div class="validation-group">
+                        <input type="radio" class="btn-check" name="row-desk-${item.row}" id="ok-desk-${item.row}" ${okC} onchange="handleQueue(${item.row}, 'OK')">
+                        <label class="btn btn-outline-success text-center" for="ok-desk-${item.row}">OK</label>
+                        <input type="radio" class="btn-check" name="row-desk-${item.row}" id="nok-desk-${item.row}" ${nokC} onchange="handleQueue(${item.row}, 'NOK')">
+                        <label class="btn btn-outline-danger text-center" for="nok-desk-${item.row}">NOK</label>
+                    </div></td>
                 </tr>`;
         });
         container.innerHTML = htmlTable + `</tbody></table></div></div>`;
@@ -392,76 +350,41 @@ function renderData(data) {
 }
 
 function handleQueue(rowId, status) {
-    queue = queue.filter(q => q.row !== rowId);
-    queue.push({ row: rowId, status: status });
-    
+    queue = queue.filter(q => q.row !== rowId); queue.push({ row: rowId, status: status });
     const dO = document.getElementById(`ok-desk-${rowId}`); const dN = document.getElementById(`nok-desk-${rowId}`);
     const mO = document.getElementById(`ok-mob-${rowId}`);  const mN = document.getElementById(`nok-mob-${rowId}`);
-    
-    if(status === 'OK') { if(dO) dO.checked = true; if(mO) mO.checked = true; } 
-    else { if(dN) dN.checked = true; if(mN) mN.checked = true; }
-
-    const rowEl = document.getElementById(`row-${rowId}`);
-    const cardEl = document.getElementById(`card-${rowId}`);
-    if (rowEl) rowEl.classList.add('item-done');
-    if (cardEl) cardEl.classList.add('item-done');
-    
+    if(status === 'OK') { if(dO) dO.checked = true; if(mO) mO.checked = true; } else { if(dN) dN.checked = true; if(mN) mN.checked = true; }
+    const rowEl = document.getElementById(`row-${rowId}`); const cardEl = document.getElementById(`card-${rowId}`);
+    if (rowEl) rowEl.classList.add('item-done'); if (cardEl) cardEl.classList.add('item-done');
     updateSubmitBar();
 }
 
-function tandaiSemua(status) {
-    if (filteredData.length === 0) return;
-    filteredData.forEach(item => { handleQueue(item.row, status); });
-}
-
-function resetPilihan() { 
-    queue = []; 
-    document.querySelectorAll('.btn-check').forEach(r => r.checked = false); 
-    document.querySelectorAll('.item-done').forEach(el => el.classList.remove('item-done'));
-    updateSubmitBar(); 
-}
+function tandaiSemua(status) { if (filteredData.length === 0) return; filteredData.forEach(item => { handleQueue(item.row, status); }); }
+function resetPilihan() { queue = []; document.querySelectorAll('.btn-check').forEach(r => r.checked = false); document.querySelectorAll('.item-done').forEach(el => el.classList.remove('item-done')); updateSubmitBar(); }
 
 function updateSubmitBar() {
     const bar = document.getElementById('submitBar');
     document.getElementById('countSelected').innerText = queue.length;
-    
-    if (queue.length > 0) {
-        bar.classList.add('show');
-    } else {
-        bar.classList.remove('show');
-    }
+    if (queue.length > 0) bar.classList.add('show'); else bar.classList.remove('show');
 }
 
 async function kirimData() {
     const res = await Swal.fire({ title: 'Kirim Data?', text: `${queue.length} validasi siap diproses.`, icon: 'question', showCancelButton: true, confirmButtonText: 'Kirim Sekarang', confirmButtonColor: '#10B981', cancelButtonText: 'Batal' });
     if (!res.isConfirmed) return;
-
     Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
     try {
         await fetch(URL_WEB_APP, { method: 'POST', mode: 'no-cors', body: JSON.stringify(queue) });
-        setTimeout(() => { 
-            Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false }); 
-            resetPilihan();
-            fetchData(); 
-        }, 1200);
+        setTimeout(() => { Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false }); resetPilihan(); fetchData(); }, 1200);
     } catch (e) { Swal.fire('Error', 'Gagal mengirim data ke server.', 'error'); }
 }
 
 function bukaPopup(url) {
     if(!url || url.length < 10) return Swal.fire('Informasi', 'Tidak ada lampiran foto.', 'info');
-    
     const myModal = new bootstrap.Modal(document.getElementById('modalFoto'));
-    const imgEl = document.getElementById('frameFoto');
-    const loadEl = document.getElementById('loadingGambar');
-    
-    let finalUrl = url;
-    const match = url.match(/[-\w]{25,}/);
+    const imgEl = document.getElementById('frameFoto'); const loadEl = document.getElementById('loadingGambar');
+    let finalUrl = url; const match = url.match(/[-\w]{25,}/);
     if (match) finalUrl = `https://drive.google.com/thumbnail?id=${match[0]}&sz=w1000`;
-
-    imgEl.style.display = 'none'; loadEl.style.display = 'block'; imgEl.src = finalUrl;
-    myModal.show();
-    
+    imgEl.style.display = 'none'; loadEl.style.display = 'block'; imgEl.src = finalUrl; myModal.show();
     imgEl.onload = () => { loadEl.style.display = 'none'; imgEl.style.display = 'block'; };
     imgEl.onerror = () => { loadEl.style.display = 'none'; myModal.hide(); Swal.fire('Gagal Memuat Foto', 'Akses folder GDrive belum di-set ke Publik.', 'error'); };
 }
@@ -470,13 +393,7 @@ function runFilter() {
     const n = document.getElementById('inputNama').value.toLowerCase();
     const t = document.getElementById('inputToko').value.toLowerCase();
     const d = document.getElementById('inputTanggal').value;
-    
     const unvalidatedData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
-
-    filteredData = unvalidatedData.filter(i => 
-        (i.nama || '').toLowerCase().includes(n) && 
-        (i.toko || '').toLowerCase().includes(t) && 
-        (d === "" || (i.timestamp || '').includes(d))
-    );
+    filteredData = unvalidatedData.filter(i => (i.nama || '').toLowerCase().includes(n) && (i.toko || '').toLowerCase().includes(t) && (d === "" || (i.timestamp || '').includes(d)));
     renderData(filteredData);
 }
