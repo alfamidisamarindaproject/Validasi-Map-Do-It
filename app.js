@@ -1,4 +1,4 @@
-// ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
+// GANTI DENGAN URL DEPLOYMENT TERBARU JIKA ANDA MELAKUKAN NEW DEPLOYMENT
 const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyB7qPxEMGvlaQXM74f2wAzf567sy4MEi-artrGNGlXcS_RAUJnJyVi_e6QWw7Tydhs/exec";
 
 let allDataRaw = [];
@@ -6,7 +6,7 @@ let filteredData = [];
 let queue = [];
 let searchTimeout = null; 
 
-// ---> TRIK BYPASS CORS GOOGLE VIA JSONP (Tanpa Fetch) <---
+// ---> TRIK BYPASS CORS GOOGLE VIA JSONP <---
 function fetchJSONP(url) {
     return new Promise((resolve, reject) => {
         const callbackName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
@@ -26,7 +26,7 @@ function fetchJSONP(url) {
     });
 }
 
-// ---> PENJINAK FORMAT TANGGAL INDONESIA (DD/MM/YYYY) <---
+// ---> PENJINAK FORMAT TANGGAL INDONESIA <---
 function parseSafeDate(dateStr) {
     if (!dateStr) return new Date(NaN);
     let str = dateStr.replace(" ", "T");
@@ -69,9 +69,12 @@ function cekStatusLogin() {
 
 async function prosesLogin(e) {
     e.preventDefault();
+    
+    // Perbaikan menghilangkan error aria-hidden (melepas fokus)
     if (document.activeElement) {
         document.activeElement.blur();
     }
+    
     const user = document.getElementById('logUsername').value.trim();
     const pass = document.getElementById('logPassword').value.trim();
     const btn = document.getElementById('btnLogin');
@@ -86,26 +89,34 @@ async function prosesLogin(e) {
         } 
         else {
             const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
-            
-            // PENTING: Memanggil fetchJSONP, BUKAN fetch()
             const result = await fetchJSONP(urlLogin);
             
             if (result.success) {
                 isSuccess = true; finalName = result.name; finalRole = result.role;
                 if (finalName.toUpperCase() === "AKBAR RASYID") finalRole = "Admin";
             } else {
-                Swal.fire('Login Gagal', result.message, 'error');
+                // Perbaikan SweetAlert (returnFocus)
+                Swal.fire({ icon: 'error', title: 'Login Gagal', text: result.message, returnFocus: false });
             }
         }
 
         if (isSuccess) {
             localStorage.setItem('sesiLoginMAP', JSON.stringify({ name: finalName, role: finalRole }));
-            Swal.fire({ icon: 'success', title: finalRole === 'Admin' ? 'Mode Admin Aktif' : 'Login Berhasil', text: `Selamat bertugas, ${finalName}`, timer: 1500, showConfirmButton: false });
+            
+            // Perbaikan SweetAlert (returnFocus)
+            Swal.fire({ 
+                icon: 'success', 
+                title: finalRole === 'Admin' ? 'Mode Admin Aktif' : 'Login Berhasil', 
+                text: `Selamat bertugas, ${finalName}`, 
+                timer: 1500, 
+                showConfirmButton: false, 
+                returnFocus: false 
+            });
             setTimeout(() => { cekStatusLogin(); }, 1200);
         }
 
     } catch (err) {
-        Swal.fire('Koneksi Gagal', err.message, 'error');
+        Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: err.message, returnFocus: false });
     } finally {
         btn.innerHTML = 'Login Sistem';
         btn.disabled = false;
@@ -113,7 +124,7 @@ async function prosesLogin(e) {
 }
 
 function prosesLogout() {
-    Swal.fire({ title: 'Akhiri Sesi?', text: "Anda akan keluar dari sistem", icon: 'question', showCancelButton: true, confirmButtonColor: '#EF4444', confirmButtonText: 'Ya, Keluar', cancelButtonText: 'Batal' })
+    Swal.fire({ title: 'Akhiri Sesi?', text: "Anda akan keluar dari sistem", icon: 'question', showCancelButton: true, confirmButtonColor: '#EF4444', confirmButtonText: 'Ya, Keluar', cancelButtonText: 'Batal', returnFocus: false })
     .then((result) => {
         if (result.isConfirmed) { localStorage.removeItem('sesiLoginMAP'); document.getElementById('formLogin').reset(); cekStatusLogin(); }
     });
@@ -136,7 +147,6 @@ async function fetchData() {
         const timeSt = new Date().getTime(); 
         const fetchUrl = `${URL_WEB_APP}?action=getData&_t=${timeSt}`;
         
-        // PENTING: Memanggil fetchJSONP, BUKAN fetch()
         const result = await fetchJSONP(fetchUrl);
         
         if(result.success === false) {
@@ -290,7 +300,7 @@ function resetPilihan() { queue = []; document.querySelectorAll('.btn-check').fo
 function updateSubmitBar() { const bar = document.getElementById('submitBar'); document.getElementById('countSelected').innerText = queue.length; if (queue.length > 0) bar.classList.add('show'); else bar.classList.remove('show'); }
 
 async function kirimData() {
-    const res = await Swal.fire({ title: 'Kirim Data?', text: `${queue.length} validasi siap diproses.`, icon: 'question', showCancelButton: true, confirmButtonText: 'Kirim Sekarang', confirmButtonColor: '#10B981', cancelButtonText: 'Batal' });
+    const res = await Swal.fire({ title: 'Kirim Data?', text: `${queue.length} validasi siap diproses.`, icon: 'question', showCancelButton: true, confirmButtonText: 'Kirim Sekarang', confirmButtonColor: '#10B981', cancelButtonText: 'Batal', returnFocus: false });
     if (!res.isConfirmed) return;
     
     Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
@@ -304,25 +314,25 @@ async function kirimData() {
         });
         
         setTimeout(() => { 
-            Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false }); 
+            Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false, returnFocus: false }); 
             resetPilihan(); 
             fetchData(); 
         }, 1500);
 
     } catch (e) { 
-        Swal.fire('Error', 'Gagal mengirim data. Pastikan jaringan internet stabil.', 'error'); 
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Gagal mengirim data. Pastikan jaringan internet stabil.', returnFocus: false }); 
     }
 }
 
 function bukaPopup(url) {
-    if(!url || url.length < 10) return Swal.fire('Informasi', 'Tidak ada lampiran foto.', 'info');
+    if(!url || url.length < 10) return Swal.fire({ icon: 'info', title: 'Informasi', text: 'Tidak ada lampiran foto.', returnFocus: false });
     const myModal = new bootstrap.Modal(document.getElementById('modalFoto'));
     const imgEl = document.getElementById('frameFoto'); const loadEl = document.getElementById('loadingGambar');
     let finalUrl = url; const match = url.match(/[-\w]{25,}/);
     if (match) finalUrl = `https://drive.google.com/thumbnail?id=${match[0]}&sz=w1000`;
     imgEl.style.display = 'none'; loadEl.style.display = 'block'; imgEl.src = finalUrl; myModal.show();
     imgEl.onload = () => { loadEl.style.display = 'none'; imgEl.style.display = 'block'; };
-    imgEl.onerror = () => { loadEl.style.display = 'none'; myModal.hide(); Swal.fire('Gagal Memuat Foto', 'Akses folder GDrive belum di-set ke Publik.', 'error'); };
+    imgEl.onerror = () => { loadEl.style.display = 'none'; myModal.hide(); Swal.fire({ icon: 'error', title: 'Gagal Memuat Foto', text: 'Akses folder GDrive belum di-set ke Publik.', returnFocus: false }); };
 }
 
 function runFilter() {
