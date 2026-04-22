@@ -6,41 +6,41 @@ let filteredData = [];
 let queue = [];
 let searchTimeout = null; 
 
-// ---> SMART FETCH DENGAN DIAGNOSTIK ERROR <---
+// ---> PENGAMBILAN DATA STANDAR (KHUSUS GITHUB PAGES) <---
 async function fetchGAS(url) {
     try {
         const response = await fetch(url);
-        const text = await response.text(); // Baca sebagai teks mentah dulu
-        
+        const text = await response.text(); 
         try {
-            return JSON.parse(text); // Coba ubah ke JSON
+            return JSON.parse(text); 
         } catch (parseError) {
-            // JIKA GAGAL JADI JSON, BERARTI GOOGLE MEMBLOKIRNYA DENGAN HALAMAN HTML
-            console.error("Response bukan JSON, melainkan:", text.substring(0, 200));
-            if (text.includes("<html") || text.includes("Sign in") || text.includes("accounts.google.com")) {
-                throw new Error("TERBLOKIR_LOGIN");
-            }
+            console.error("Gagal parse JSON:", text.substring(0, 100));
+            if (text.includes("<html") || text.includes("Sign in")) throw new Error("TERBLOKIR_LOGIN");
             throw new Error("SERVER_ERROR");
         }
-    } catch (error) {
-        throw error;
+    } catch (error) { throw error; }
+}
+
+// ---> PENJINAK FORMAT TANGGAL INDONESIA (DD/MM/YYYY) <---
+function parseSafeDate(dateStr) {
+    if (!dateStr) return new Date(NaN);
+    let str = dateStr.replace(" ", "T");
+    if (str.includes("/")) {
+        const parts = str.split("T");
+        const dParts = parts[0].split("/");
+        // Ubah DD/MM/YYYY menjadi YYYY-MM-DD standar Internasional
+        if (dParts.length === 3) str = `${dParts[2]}-${dParts[1]}-${dParts[0]}T${parts[1] || '00:00:00'}`;
     }
+    return new Date(str);
 }
 
 document.addEventListener('DOMContentLoaded', () => {
     cekStatusLogin(); 
     ['inputNama', 'inputToko', 'inputTanggal'].forEach(id => {
         const el = document.getElementById(id);
-        if(el) {
-            el.addEventListener('input', () => {
-                clearTimeout(searchTimeout);
-                searchTimeout = setTimeout(runFilter, 300);
-            });
-        }
+        if(el) { el.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(runFilter, 300); }); }
     });
-    window.addEventListener('resize', () => {
-        if (filteredData.length > 0) renderData(filteredData);
-    });
+    window.addEventListener('resize', () => { if (filteredData.length > 0) renderData(filteredData); });
 });
 
 function cekStatusLogin() {
@@ -139,7 +139,7 @@ async function fetchData() {
         allDataRaw = result.data || [];
         filteredData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
         
-        try { setupDashboardFilters(); updateDashboard(); document.getElementById('dashboardSection').style.display = 'block'; } catch (errDash) {}
+        try { setupDashboardFilters(); updateDashboard(); document.getElementById('dashboardSection').style.display = 'block'; } catch (errDash) { console.error(errDash); }
         renderData(filteredData);
 
     } catch (err) {
@@ -148,10 +148,7 @@ async function fetchData() {
         
         if (err.message === "TERBLOKIR_LOGIN") {
             errorTitle = "Terblokir Halaman Login Google";
-            errorMsg = "Google memaksa web untuk login. <b>Solusi:</b> Buka Apps Script > Deploy > New Deployment > Pastikan 'Who has access' adalah <b>Anyone</b> (BUKAN Anyone with Google Account).";
-        } else if (err.message === "SERVER_ERROR") {
-            errorTitle = "Error Pada Script Backend";
-            errorMsg = "Script kode.gs mengalami error syntax atau gagal dieksekusi.";
+            errorMsg = "Google memaksa web untuk login. <b>Solusi:</b> Buka Apps Script > Deploy > New Deployment > Pastikan 'Who has access' adalah <b>Anyone</b>.";
         }
 
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
@@ -193,19 +190,22 @@ function updateDashboard() {
         if (valAM !== 'ALL') dashData = dashData.filter(i => i.am === valAM);
     }
     if (valToko !== 'ALL') dashData = dashData.filter(i => i.toko === valToko);
+    
     dashData = dashData.filter(item => {
         if(!item.timestamp) return false;
-        const itemDate = new Date(item.timestamp.replace(" ", "T")); 
+        const itemDate = parseSafeDate(item.timestamp); // Menggunakan parser aman
         if(isNaN(itemDate)) return false;
+        
         if (period === 'MTD') return itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth;
         else if (period === 'YTD') return itemDate.getFullYear() === currentYear;
         return true;
     });
+    
     const uniqueTokoCount = new Set(dashData.map(item => item.toko).filter(t=>t)).size;
     const totalSubmit = dashData.length;
     let lastSubmitStr = "-";
     if (totalSubmit > 0) {
-        const dates = dashData.map(item => new Date(item.timestamp.replace(" ", "T")).getTime()).filter(t => !isNaN(t));
+        const dates = dashData.map(item => parseSafeDate(item.timestamp).getTime()).filter(t => !isNaN(t));
         if(dates.length > 0) lastSubmitStr = new Date(Math.max(...dates)).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' });
     }
     document.getElementById('dashTokoCount').innerText = uniqueTokoCount;
@@ -328,8 +328,23 @@ function bukaPopup(url) {
 function runFilter() {
     const n = document.getElementById('inputNama').value.toLowerCase();
     const t = document.getElementById('inputToko').value.toLowerCase();
-    const d = document.getElementById('inputTanggal').value;
+    const d = document.getElementById('inputTanggal').value; // Hasilnya format YYYY-MM-DD
+    
     const unvalidatedData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
-    filteredData = unvalidatedData.filter(i => (i.nama || '').toLowerCase().includes(n) && (i.toko || '').toLowerCase().includes(t) && (d === "" || (i.timestamp || '').includes(d)));
+    
+    filteredData = unvalidatedData.filter(i => {
+        let matchName = (i.nama || '').toLowerCase().includes(n);
+        let matchToko = (i.toko || '').toLowerCase().includes(t);
+        
+        let matchDate = true;
+        if (d !== "") {
+            const dParts = d.split('-'); 
+            const formatID = `${dParts[2]}/${dParts[1]}/${dParts[0]}`; // Ubah ke standar DD/MM/YYYY agar cocok dengan pencarian
+            matchDate = (i.timestamp || '').includes(d) || (i.timestamp || '').includes(formatID);
+        }
+        
+        return matchName && matchToko && matchDate;
+    });
+    
     renderData(filteredData);
 }
