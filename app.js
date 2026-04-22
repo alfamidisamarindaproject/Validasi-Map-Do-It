@@ -1,22 +1,28 @@
 // ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzXYxvcB_BEE-bZGoDZTZfClTrOyGTaESvFEcgPgsToAh8HX48xRCYOLhJQ4Ax9rwc/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwiuE7304Z-0LMqcuciMJz3jCp7XJjC5G0LB_GyLQ_PCqsPifRnfjafS4DS8lOu3LnQ/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
 let queue = [];
 let searchTimeout = null; 
 
-// ---> PENGAMBILAN DATA STANDAR (KHUSUS GITHUB PAGES) <---
+// ---> SMART FETCH DENGAN DIAGNOSTIK ERROR <---
 async function fetchGAS(url) {
     try {
-        // PENTING: Untuk GitHub Pages, kita hilangkan semua 'headers' custom.
-        // Ini memaksa browser menganggapnya sebagai "Simple Request" sehingga tidak memicu preflight (OPTIONS) yang diblokir Google.
         const response = await fetch(url);
+        const text = await response.text(); // Baca sebagai teks mentah dulu
         
-        if (!response.ok) throw new Error("Terjadi masalah pada koneksi ke server Google.");
-        return await response.json();
+        try {
+            return JSON.parse(text); // Coba ubah ke JSON
+        } catch (parseError) {
+            // JIKA GAGAL JADI JSON, BERARTI GOOGLE MEMBLOKIRNYA DENGAN HALAMAN HTML
+            console.error("Response bukan JSON, melainkan:", text.substring(0, 200));
+            if (text.includes("<html") || text.includes("Sign in") || text.includes("accounts.google.com")) {
+                throw new Error("TERBLOKIR_LOGIN");
+            }
+            throw new Error("SERVER_ERROR");
+        }
     } catch (error) {
-        console.error("Fetch Error:", error);
         throw error;
     }
 }
@@ -68,14 +74,11 @@ async function prosesLogin(e) {
     try {
         let isSuccess = false; let finalName = ""; let finalRole = "";
 
-        // Bypass local superadmin
         if (user.toUpperCase() === "AKBAR RASYID" && (pass === "0225065474" || pass === "service quality")) {
             isSuccess = true; finalName = "AKBAR RASYID"; finalRole = "Admin";
         } 
         else {
             const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
-            
-            // Panggil API GSheet
             const result = await fetchGAS(urlLogin);
             
             if (result.success) {
@@ -93,7 +96,9 @@ async function prosesLogin(e) {
         }
 
     } catch (err) {
-        Swal.fire('Koneksi Gagal', 'Sistem terblokir CORS atau GSheet tidak merespon.', 'error');
+        let msg = "Terjadi masalah jaringan atau CORS.";
+        if (err.message === "TERBLOKIR_LOGIN") msg = "Google memblokir akses. Web App harus diset 'Who has access: Anyone'.";
+        Swal.fire('Koneksi Gagal', msg, 'error');
     } finally {
         btn.innerHTML = 'Login Sistem';
         btn.disabled = false;
@@ -127,7 +132,7 @@ async function fetchData() {
         const result = await fetchGAS(fetchUrl);
         
         if(result.success === false) {
-             document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Error Server Google</div><div class="small">${result.message}</div></div>`;
+             document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Gagal Membaca Sheet</div><div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">${result.message}</div></div>`;
              return;
         }
         
@@ -138,11 +143,22 @@ async function fetchData() {
         renderData(filteredData);
 
     } catch (err) {
+        let errorTitle = "Koneksi Terblokir (CORS)";
+        let errorMsg = "Browser memblokir permintaan ke Google Apps Script.";
+        
+        if (err.message === "TERBLOKIR_LOGIN") {
+            errorTitle = "Terblokir Halaman Login Google";
+            errorMsg = "Google memaksa web untuk login. <b>Solusi:</b> Buka Apps Script > Deploy > New Deployment > Pastikan 'Who has access' adalah <b>Anyone</b> (BUKAN Anyone with Google Account).";
+        } else if (err.message === "SERVER_ERROR") {
+            errorTitle = "Error Pada Script Backend";
+            errorMsg = "Script kode.gs mengalami error syntax atau gagal dieksekusi.";
+        }
+
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
             <i class="bi bi-shield-lock fs-1 d-block mb-2"></i>
-            <div class="fw-bold">Gagal Mengambil Data</div>
-            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">Koneksi diblokir oleh sistem keamanan browser (CORS).</div>
-            <button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
+            <div class="fw-bold">${errorTitle}</div>
+            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start" style="max-width: 400px;">${errorMsg}</div>
+            <br><button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
         </div>`;
     }
 }
@@ -280,20 +296,13 @@ async function kirimData() {
     Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     
     try {
-        // PENTING UNTUK GITHUB PAGES: Menggunakan mode: 'no-cors' 
-        // Ini ibarat mengirim surat tanpa meminta resi balasan. 
-        // Browser tidak akan mengecek izin CORS Google sama sekali, sehingga data PASTI terkirim.
         await fetch(URL_WEB_APP, { 
             method: 'POST', 
-            mode: 'no-cors', // Bypass CORS Level Browser
-            headers: {
-                'Content-Type': 'text/plain' 
-            },
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain' },
             body: JSON.stringify(queue) 
         });
         
-        // Karena kita menggunakan no-cors, kita tidak bisa membaca balasan dari Google.
-        // Jadi kita berikan jeda sedikit, lalu asumsikan sukses (karena request sudah dijamin lewat).
         setTimeout(() => { 
             Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false }); 
             resetPilihan(); 
@@ -301,7 +310,6 @@ async function kirimData() {
         }, 1500);
 
     } catch (e) { 
-        console.error("POST Error:", e);
         Swal.fire('Error', 'Gagal mengirim data. Pastikan jaringan internet stabil.', 'error'); 
     }
 }
