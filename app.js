@@ -1,38 +1,11 @@
-// ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyB7qPxEMGvlaQXM74f2wAzf567sy4MEi-artrGNGlXcS_RAUJnJyVi_e6QWw7Tydhs/exec";
+// GANTI DENGAN URL DEPLOYMENT TERBARU DARI GOOGLE APPS SCRIPT ANDA
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbxq-pBQJXCOcoIVi_oESKM9CRnyMWxaqG0vJWFvHuUy938Ije9ZEvIoT_JvbRdaLZbT/exec";
 
 let allDataRaw = [];
-let filteredData = []; 
 let queue = [];
 let searchTimeout = null; 
 
-// Fungsi Pembantu untuk mencari wadah data di HTML secara otomatis
-function getContainer() {
-    return document.getElementById('dataContainer') || document.getElementById('cardContainer');
-}
-
-// ==========================================
-// 1. SISTEM BYPASS KONEKSI (JSONP) & PARSER
-// ==========================================
-function fetchJSONP(url) {
-    return new Promise((resolve, reject) => {
-        const callbackName = 'jsonp_cb_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
-        window[callbackName] = function(data) {
-            delete window[callbackName];
-            document.body.removeChild(script);
-            resolve(data);
-        };
-        const script = document.createElement('script');
-        script.src = url + (url.includes('?') ? '&' : '?') + 'callback=' + callbackName;
-        script.onerror = () => {
-            delete window[callbackName];
-            document.body.removeChild(script);
-            reject(new Error("Gagal terhubung ke server Google. Pastikan Anda sudah login akun GMail."));
-        };
-        document.body.appendChild(script);
-    });
-}
-
+// Format Tanggal (Dari DD/MM/YYYY ke Date Object)
 function parseSafeDate(dateStr) {
     if (!dateStr) return new Date(NaN);
     let str = dateStr.replace(" ", "T");
@@ -44,89 +17,26 @@ function parseSafeDate(dateStr) {
     return new Date(str);
 }
 
-// ==========================================
-// 2. INISIALISASI & SISTEM LOGIN
-// ==========================================
-document.addEventListener('DOMContentLoaded', () => {
-    cekStatusLogin(); 
-    if(document.getElementById('inputNama')) document.getElementById('inputNama').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(runFilter, 300); });
-    if(document.getElementById('inputToko')) document.getElementById('inputToko').addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(runFilter, 300); });
-    if(document.getElementById('inputTanggal')) document.getElementById('inputTanggal').addEventListener('change', runFilter);
-    window.addEventListener('resize', () => { if (filteredData.length > 0) renderData(filteredData); });
-});
+// Mulai otomatis saat web dibuka
+window.onload = () => {
+    setupEventListeners();
+    fetchData();
+};
 
-function cekStatusLogin() {
-    const sesiUser = localStorage.getItem('sesiLoginMAP');
-    if (sesiUser) {
-        const userData = JSON.parse(sesiUser);
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('appContainer').style.display = 'block';
-        document.getElementById('displayUserName').innerText = userData.name;
-        document.getElementById('displayUserRole').innerText = userData.role;
-        document.getElementById('avatarInisial').innerText = userData.name.charAt(0).toUpperCase();
-        if (userData.role === 'Admin') document.getElementById('avatarInisial').classList.add('admin-avatar');
-        else document.getElementById('avatarInisial').classList.remove('admin-avatar');
-        fetchData(); 
-    } else {
-        document.getElementById('loginScreen').style.display = 'flex';
-        document.getElementById('appContainer').style.display = 'none';
-    }
-}
-
-async function prosesLogin(e) {
-    e.preventDefault();
-    if (document.activeElement) document.activeElement.blur(); 
-
-    const user = document.getElementById('logUsername').value.trim();
-    const pass = document.getElementById('logPassword').value.trim();
-    const btn = document.getElementById('btnLogin');
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Memproses...';
-    btn.disabled = true;
-
-    try {
-        let isSuccess = false; let finalName = ""; let finalRole = "";
-
-        if (user.toUpperCase() === "AKBAR RASYID" && (pass === "0225065474" || pass === "service quality")) {
-            isSuccess = true; finalName = "AKBAR RASYID"; finalRole = "Admin";
-        } else {
-            const urlLogin = `${URL_WEB_APP}?action=login&username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}`;
-            const result = await fetchJSONP(urlLogin);
-            
-            if (result.success) {
-                isSuccess = true; finalName = result.name; finalRole = result.role;
-                if (finalName.toUpperCase() === "AKBAR RASYID") finalRole = "Admin";
-            } else {
-                Swal.fire({ icon: 'error', title: 'Login Gagal', text: result.message, returnFocus: false });
-            }
-        }
-
-        if (isSuccess) {
-            localStorage.setItem('sesiLoginMAP', JSON.stringify({ name: finalName, role: finalRole }));
-            Swal.fire({ icon: 'success', title: 'Berhasil', text: `Selamat bertugas, ${finalName}`, timer: 1500, showConfirmButton: false, returnFocus: false });
-            setTimeout(() => { cekStatusLogin(); }, 1200);
-        }
-    } catch (err) {
-        Swal.fire({ icon: 'error', title: 'Koneksi Gagal', text: err.message, returnFocus: false });
-    } finally {
-        btn.innerHTML = 'Login Sistem';
-        btn.disabled = false;
-    }
-}
-
-function prosesLogout() {
-    Swal.fire({ title: 'Akhiri Sesi?', text: "Anda akan keluar dari sistem", icon: 'question', showCancelButton: true, confirmButtonColor: '#EF4444', confirmButtonText: 'Ya, Keluar', cancelButtonText: 'Batal', returnFocus: false })
-    .then((result) => {
-        if (result.isConfirmed) { localStorage.removeItem('sesiLoginMAP'); document.getElementById('formLogin').reset(); cekStatusLogin(); }
+function setupEventListeners() {
+    ['inputNama', 'inputToko'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.addEventListener('input', () => { clearTimeout(searchTimeout); searchTimeout = setTimeout(runFilter, 300); });
+    });
+    ['filterAC', 'filterAM'].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.addEventListener('change', runFilter);
     });
 }
 
-// ==========================================
-// 3. PENGAMBILAN DATA & DASHBOARD
-// ==========================================
 function showSkeleton() {
-    const container = getContainer();
-    if (!container) return; // Mencegah Error Null
-
+    const container = document.getElementById('cardContainer');
+    if (!container) return;
     const isMobile = window.innerWidth < 768;
     let html = isMobile ? '<div class="row">' : '<div class="data-card p-4">';
     for(let i=0; i<3; i++) {
@@ -136,112 +46,86 @@ function showSkeleton() {
     container.innerHTML = html + (isMobile ? '</div>' : '</div>');
 }
 
+// 1. PENGAMBILAN DATA
 async function fetchData() {
     showSkeleton(); queue = []; updateSubmitBar();
     try {
-        const timeSt = new Date().getTime(); 
-        const fetchUrl = `${URL_WEB_APP}?action=getData&_t=${timeSt}`;
-        const result = await fetchJSONP(fetchUrl);
+        // Menggunakan standard fetch tanpa no-cors untuk mendapatkan balasan JSON yang utuh
+        const response = await fetch(URL_WEB_APP);
+        const result = await response.json();
         
-        if(result.success === false) {
-             const cont = getContainer();
-             if(cont) cont.innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-exclamation-triangle fs-1 d-block mb-2"></i><div class="fw-bold">Gagal Membaca Sheet</div><div class="small mt-2">${result.message}</div></div>`;
-             return;
+        if (result.success) {
+            // Saring data yang kolom "validasi" nya masih kosong
+            allDataRaw = (result.data || []).filter(i => !i.validasi || i.validasi === "");
+            populateDropdowns();
+            runFilter(); // Otomatis render & filter
+        } else {
+            throw new Error(result.message || "Gagal mengambil data");
         }
-        
-        allDataRaw = result.data || [];
-        filteredData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
-        
-        try { setupDashboardFilters(); updateDashboard(); document.getElementById('dashboardSection').style.display = 'block'; } catch (e) {}
-        renderData(filteredData);
     } catch (err) {
-        const cont = getContainer();
-        if(cont) cont.innerHTML = `<div class="text-center text-danger py-5"><i class="bi bi-wifi-off fs-1 d-block mb-2"></i><div class="fw-bold">Akses Terputus</div><div class="small mt-2">Pastikan internet stabil dan akun Google Anda login di browser ini.</div><br><button class="btn btn-sm btn-outline-primary" onclick="fetchData()">Coba Lagi</button></div>`;
+        console.error("Fetch Error:", err);
+        const cont = document.getElementById('cardContainer');
+        cont.innerHTML = `
+            <div class="text-center text-danger py-5">
+                <i class="bi bi-shield-x fs-1 d-block mb-2"></i>
+                <div class="fw-bold">Akses Diblokir oleh Google</div>
+                <div class="small mt-2 mx-auto" style="max-width: 400px; text-align: left;">
+                    <b>Solusi Wajib:</b> Buka Google Apps Script > Klik Deploy > New Deployment. Pada bagian <b>"Who has access"</b>, pastikan Anda memilih <b>"Anyone"</b>. Jangan pilih "Anyone with Google Account".
+                </div>
+            </div>`;
     }
 }
 
-function setupDashboardFilters() {
-    const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
-    const populate = (id, key) => {
-        const select = document.getElementById(id);
-        if(!select) return;
-        const uniqueItems = [...new Set(allDataRaw.map(item => item[key]).filter(v => v))].sort();
-        const currVal = select.value;
-        select.innerHTML = `<option value="ALL">Semua ${key.toUpperCase()}</option>`;
-        uniqueItems.forEach(val => { select.innerHTML += `<option value="${val}">${val}</option>`; });
-        if(uniqueItems.includes(currVal)) select.value = currVal;
-    };
-    populate('dashToko', 'toko'); populate('dashAC', 'ac'); populate('dashAM', 'am');
-    if (sesiUser.role !== 'Admin') { 
-        if(document.getElementById('dashAC')) document.getElementById('dashAC').style.display = 'none'; 
-        if(document.getElementById('dashAM')) document.getElementById('dashAM').style.display = 'none'; 
-    }
+// Mengisi Dropdown AC & AM secara otomatis dari data yang ada
+function populateDropdowns() {
+    const acSelect = document.getElementById('filterAC');
+    const amSelect = document.getElementById('filterAM');
+    if(!acSelect || !amSelect) return;
+
+    // Ambil data unik
+    const uniqueAC = [...new Set(allDataRaw.map(item => item.ac).filter(v => v !== ""))].sort();
+    const uniqueAM = [...new Set(allDataRaw.map(item => item.am).filter(v => v !== ""))].sort();
+
+    // Simpan pilihan sebelumnya jika ada
+    const currAC = acSelect.value;
+    const currAM = amSelect.value;
+
+    acSelect.innerHTML = `<option value="ALL">Semua AC</option>`;
+    uniqueAC.forEach(val => acSelect.innerHTML += `<option value="${val}">${val}</option>`);
+    if(uniqueAC.includes(currAC)) acSelect.value = currAC;
+
+    amSelect.innerHTML = `<option value="ALL">Semua AM</option>`;
+    uniqueAM.forEach(val => amSelect.innerHTML += `<option value="${val}">${val}</option>`);
+    if(uniqueAM.includes(currAM)) amSelect.value = currAM;
 }
 
-function updateDashboard() {
-    const period = document.getElementById('dashPeriod') ? document.getElementById('dashPeriod').value : 'MTD';
-    const valToko = document.getElementById('dashToko') ? document.getElementById('dashToko').value : 'ALL';
-    const valAC = document.getElementById('dashAC') ? document.getElementById('dashAC').value : 'ALL';
-    const valAM = document.getElementById('dashAM') ? document.getElementById('dashAM').value : 'ALL';
+// 2. SISTEM FILTER GABUNGAN
+function runFilter() {
+    const n = (document.getElementById('inputNama') ? document.getElementById('inputNama').value.toLowerCase() : "");
+    const t = (document.getElementById('inputToko') ? document.getElementById('inputToko').value.toLowerCase() : "");
+    const valAC = (document.getElementById('filterAC') ? document.getElementById('filterAC').value : "ALL");
+    const valAM = (document.getElementById('filterAM') ? document.getElementById('filterAM').value : "ALL");
     
-    const sesiUser = JSON.parse(localStorage.getItem('sesiLoginMAP'));
-    const now = new Date(); const currentYear = now.getFullYear(); const currentMonth = now.getMonth();
-    let dashData = allDataRaw;
-    
-    if (sesiUser.role === 'AC') dashData = dashData.filter(i => (i.ac || '').toLowerCase() === sesiUser.name.toLowerCase());
-    else if (sesiUser.role === 'AM') dashData = dashData.filter(i => (i.am || '').toLowerCase() === sesiUser.name.toLowerCase());
-    else {
-        if (valAC !== 'ALL') dashData = dashData.filter(i => i.ac === valAC);
-        if (valAM !== 'ALL') dashData = dashData.filter(i => i.am === valAM);
-    }
-    if (valToko !== 'ALL') dashData = dashData.filter(i => i.toko === valToko);
-    
-    dashData = dashData.filter(item => {
-        if(!item.timestamp) return false;
-        const itemDate = parseSafeDate(item.timestamp);
-        if(isNaN(itemDate)) return false;
-        if (period === 'MTD') return itemDate.getFullYear() === currentYear && itemDate.getMonth() === currentMonth;
-        else if (period === 'YTD') return itemDate.getFullYear() === currentYear;
-        return true;
+    const filtered = allDataRaw.filter(i => {
+        const matchNama = (i.nama || '').toLowerCase().includes(n);
+        const matchToko = (i.toko || '').toLowerCase().includes(t);
+        const matchAC = (valAC === "ALL" || i.ac === valAC);
+        const matchAM = (valAM === "ALL" || i.am === valAM);
+        
+        return matchNama && matchToko && matchAC && matchAM;
     });
     
-    if(document.getElementById('dashTokoCount')) document.getElementById('dashTokoCount').innerText = new Set(dashData.map(item => item.toko).filter(t=>t)).size;
-    if(document.getElementById('dashSubmitCount')) document.getElementById('dashSubmitCount').innerText = dashData.length;
-    
-    let lastSubmitStr = "-";
-    if (dashData.length > 0) {
-        const dates = dashData.map(item => parseSafeDate(item.timestamp).getTime()).filter(t => !isNaN(t));
-        if(dates.length > 0) lastSubmitStr = new Date(Math.max(...dates)).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute:'2-digit' });
-    }
-    if(document.getElementById('dashLastSubmit')) document.getElementById('dashLastSubmit').innerText = lastSubmitStr;
+    renderTable(filtered);
 }
 
-// ==========================================
-// 4. RENDERING DESAIN COMPACT CARD
-// ==========================================
-function parseChecklistCompact(txt) {
-    if (!txt) return '<span class="badge bg-light text-muted border">Data Kosong</span>';
-    const isP = /PLANOGRAM\s+OK/i.test(txt);
-    const isL = /LABEL PRICE\s+OK/i.test(txt);
-    const isE = /EXP CHECKED\s+OK/i.test(txt);
-    const isC = /CLEANING\s+OK/i.test(txt);
-
-    return `
-        <span class="badge ${isP ? 'bg-success' : 'bg-danger'} bg-opacity-75 me-1 fw-normal" title="Planogram">P ${isP ? '✔' : '✖'}</span>
-        <span class="badge ${isL ? 'bg-success' : 'bg-danger'} bg-opacity-75 me-1 fw-normal" title="Label Price">L ${isL ? '✔' : '✖'}</span>
-        <span class="badge ${isE ? 'bg-success' : 'bg-danger'} bg-opacity-75 me-1 fw-normal" title="Expired">E ${isE ? '✔' : '✖'}</span>
-        <span class="badge ${isC ? 'bg-success' : 'bg-danger'} bg-opacity-75 fw-normal" title="Cleaning">C ${isC ? '✔' : '✖'}</span>
-    `;
-}
-
-function renderData(data) {
-    const container = getContainer();
-    if(!container) return; // Mencegah Error Null
-    
+// 3. MERENDER DATA DENGAN DESAIN COMPACT CARD
+function renderTable(data) {
+    const container = document.getElementById('cardContainer');
+    if(!container) return; 
     container.innerHTML = '';
 
     if (!data || data.length === 0) {
-        container.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-inbox" style="font-size: 3rem; color: #CBD5E1;"></i><h6 class="fw-semibold mt-3">Tidak ada antrean validasi tersisa.</h6></div>`; 
+        container.innerHTML = `<div class="text-center py-5 text-muted"><i class="bi bi-check2-circle" style="font-size: 3rem; color: #CBD5E1;"></i><h6 class="fw-semibold mt-3">Semua data sesuai filter telah tervalidasi.</h6></div>`; 
         return;
     }
 
@@ -292,9 +176,22 @@ function renderData(data) {
     container.innerHTML = htmlCards;
 }
 
-// ==========================================
-// 5. KONTROL ANTRIAN & PENGIRIMAN DATA
-// ==========================================
+function parseChecklistCompact(txt) {
+    if (!txt) return '<span class="badge bg-light text-muted border">Data Kosong</span>';
+    const isP = /PLANOGRAM\s+OK/i.test(txt);
+    const isL = /LABEL PRICE\s+OK/i.test(txt);
+    const isE = /EXP CHECKED\s+OK/i.test(txt);
+    const isC = /CLEANING\s+OK/i.test(txt);
+
+    return `
+        <span class="badge ${isP ? 'bg-success' : 'bg-danger'} bg-opacity-75 me-1 fw-normal" title="Planogram">P ${isP ? '✔' : '✖'}</span>
+        <span class="badge ${isL ? 'bg-success' : 'bg-danger'} bg-opacity-75 me-1 fw-normal" title="Label Price">L ${isL ? '✔' : '✖'}</span>
+        <span class="badge ${isE ? 'bg-success' : 'bg-danger'} bg-opacity-75 me-1 fw-normal" title="Expired">E ${isE ? '✔' : '✖'}</span>
+        <span class="badge ${isC ? 'bg-success' : 'bg-danger'} bg-opacity-75 fw-normal" title="Cleaning">C ${isC ? '✔' : '✖'}</span>
+    `;
+}
+
+// 4. KONTROL ANTRIAN & PENGIRIMAN DATA
 function handleQueue(rowId, status) {
     queue = queue.filter(q => q.row !== rowId); queue.push({ row: rowId, status: status });
     const cardEl = document.getElementById(`card-${rowId}`);
@@ -302,7 +199,6 @@ function handleQueue(rowId, status) {
     updateSubmitBar();
 }
 
-function tandaiSemua(status) { if (filteredData.length === 0) return; filteredData.forEach(item => { handleQueue(item.row, status); document.getElementById(`${status.toLowerCase()}-${item.row}`).checked = true; }); }
 function resetPilihan() { queue = []; document.querySelectorAll('.btn-check').forEach(r => r.checked = false); document.querySelectorAll('.item-done').forEach(el => el.classList.remove('item-done')); updateSubmitBar(); }
 
 function updateSubmitBar() { 
@@ -318,7 +214,9 @@ async function kirimData() {
     
     Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     try {
+        // Mode 'no-cors' digunakan pada POST agar bisa mengirim (menyimpan) tanpa dicekal browser
         await fetch(URL_WEB_APP, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(queue) });
+        
         setTimeout(() => { 
             Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false, returnFocus: false }); 
             resetPilihan(); fetchData(); 
@@ -328,9 +226,7 @@ async function kirimData() {
     }
 }
 
-// ==========================================
-// 6. UTILITAS LAINNYA
-// ==========================================
+// 5. POPUP FOTO
 function bukaPopup(url) {
     if(!url || url.length < 10) return Swal.fire({ icon: 'info', title: 'Informasi', text: 'Tidak ada lampiran foto.', returnFocus: false });
     const modalEl = document.getElementById('modalFoto');
@@ -344,22 +240,4 @@ function bukaPopup(url) {
     imgEl.style.display = 'none'; loadEl.style.display = 'block'; imgEl.src = finalUrl; myModal.show();
     imgEl.onload = () => { loadEl.style.display = 'none'; imgEl.style.display = 'block'; };
     imgEl.onerror = () => { loadEl.style.display = 'none'; myModal.hide(); Swal.fire({ icon: 'error', title: 'Gagal', text: 'Akses folder GDrive belum diset Publik.', returnFocus: false }); };
-}
-
-function runFilter() {
-    const n = (document.getElementById('inputNama') ? document.getElementById('inputNama').value.toLowerCase() : "");
-    const t = (document.getElementById('inputToko') ? document.getElementById('inputToko').value.toLowerCase() : "");
-    const dRaw = (document.getElementById('inputTanggal') ? document.getElementById('inputTanggal').value : ""); 
-    
-    let dFormatted = "";
-    if (dRaw) { const parts = dRaw.split('-'); dFormatted = `${parts[2]}/${parts[1]}/${parts[0]}`; }
-    
-    const unvalidatedData = allDataRaw.filter(i => !i.validasi || i.validasi === "");
-    filteredData = unvalidatedData.filter(i => {
-        const matchNama = (i.nama || '').toLowerCase().includes(n);
-        const matchToko = (i.toko || '').toLowerCase().includes(t);
-        const matchDate = (dFormatted === "" || (i.timestamp || '').includes(dFormatted));
-        return matchNama && matchToko && matchDate;
-    });
-    renderData(filteredData);
 }
