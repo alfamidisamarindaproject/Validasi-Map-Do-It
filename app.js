@@ -69,6 +69,9 @@ function cekStatusLogin() {
 
 async function prosesLogin(e) {
     e.preventDefault();
+    if (document.activeElement) {
+        document.activeElement.blur();
+    }
     const user = document.getElementById('logUsername').value.trim();
     const pass = document.getElementById('logPassword').value.trim();
     const btn = document.getElementById('btnLogin');
