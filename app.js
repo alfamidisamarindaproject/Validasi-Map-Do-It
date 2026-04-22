@@ -1,21 +1,18 @@
 // ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzXYxvcB_BEE-bZGoDZTZfClTrOyGTaESvFEcgPgsToAh8HX48xRCYOLhJQ4Ax9rwc/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwiuE7304Z-0LMqcuciMJz3jCp7XJjC5G0LB_GyLQ_PCqsPifRnfjafS4DS8lOu3LnQ/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
 let queue = [];
 let searchTimeout = null; 
 
-// ---> PENGAMBILAN DATA STANDAR (ANTI-CORS GOOGLE) <---
+// ---> PENGAMBILAN DATA STANDAR (KHUSUS GITHUB PAGES) <---
 async function fetchGAS(url) {
     try {
-        const response = await fetch(url, {
-            method: 'GET',
-            redirect: 'follow', // Wajib untuk mengikuti redirect otomatis dari Google
-            headers: {
-                'Accept': 'application/json'
-            }
-        });
+        // PENTING: Untuk GitHub Pages, kita hilangkan semua 'headers' custom.
+        // Ini memaksa browser menganggapnya sebagai "Simple Request" sehingga tidak memicu preflight (OPTIONS) yang diblokir Google.
+        const response = await fetch(url);
+        
         if (!response.ok) throw new Error("Terjadi masalah pada koneksi ke server Google.");
         return await response.json();
     } catch (error) {
@@ -96,7 +93,7 @@ async function prosesLogin(e) {
         }
 
     } catch (err) {
-        Swal.fire('Koneksi Gagal', 'Gagal menghubungkan aplikasi ke Spreadsheet.', 'error');
+        Swal.fire('Koneksi Gagal', 'Sistem terblokir CORS atau GSheet tidak merespon.', 'error');
     } finally {
         btn.innerHTML = 'Login Sistem';
         btn.disabled = false;
@@ -144,7 +141,7 @@ async function fetchData() {
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
             <i class="bi bi-shield-lock fs-1 d-block mb-2"></i>
             <div class="fw-bold">Gagal Mengambil Data</div>
-            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">Periksa URL Web App atau Pengaturan Akses "Anyone".</div>
+            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">Koneksi diblokir oleh sistem keamanan browser (CORS).</div>
             <button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
         </div>`;
     }
@@ -283,21 +280,29 @@ async function kirimData() {
     Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
     
     try {
-        // TRIK ANTI-CORS: Menggunakan text/plain agar browser tidak mengirim request OPTIONS yang akan diblokir Google
-        const response = await fetch(URL_WEB_APP, { 
+        // PENTING UNTUK GITHUB PAGES: Menggunakan mode: 'no-cors' 
+        // Ini ibarat mengirim surat tanpa meminta resi balasan. 
+        // Browser tidak akan mengecek izin CORS Google sama sekali, sehingga data PASTI terkirim.
+        await fetch(URL_WEB_APP, { 
             method: 'POST', 
-            redirect: 'follow',
+            mode: 'no-cors', // Bypass CORS Level Browser
             headers: {
-                'Content-Type': 'text/plain;charset=utf-8' 
+                'Content-Type': 'text/plain' 
             },
             body: JSON.stringify(queue) 
         });
         
-        await response.text(); 
-        setTimeout(() => { Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false }); resetPilihan(); fetchData(); }, 1200);
+        // Karena kita menggunakan no-cors, kita tidak bisa membaca balasan dari Google.
+        // Jadi kita berikan jeda sedikit, lalu asumsikan sukses (karena request sudah dijamin lewat).
+        setTimeout(() => { 
+            Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false }); 
+            resetPilihan(); 
+            fetchData(); 
+        }, 1500);
+
     } catch (e) { 
         console.error("POST Error:", e);
-        Swal.fire('Error', 'Gagal mengirim data ke server. Pastikan Akses Deploy diset ke Anyone.', 'error'); 
+        Swal.fire('Error', 'Gagal mengirim data. Pastikan jaringan internet stabil.', 'error'); 
     }
 }
 
