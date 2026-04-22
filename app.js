@@ -1,15 +1,21 @@
 // ===== MASUKKAN URL DEPLOYMENT BARU ANDA DI SINI =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyoXXEoJJDHztHNO5jJXcwvGuk40bpYw5pnMqCwMAWvOhJzt8vu84aWLF9GjdMMzxNk/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbzXYxvcB_BEE-bZGoDZTZfClTrOyGTaESvFEcgPgsToAh8HX48xRCYOLhJQ4Ax9rwc/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
 let queue = [];
 let searchTimeout = null; 
 
-// ---> PENGAMBILAN DATA STANDAR (MENGGANTIKAN JSONP) <---
+// ---> PENGAMBILAN DATA STANDAR (ANTI-CORS GOOGLE) <---
 async function fetchGAS(url) {
     try {
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            method: 'GET',
+            redirect: 'follow', // Wajib untuk mengikuti redirect otomatis dari Google
+            headers: {
+                'Accept': 'application/json'
+            }
+        });
         if (!response.ok) throw new Error("Terjadi masalah pada koneksi ke server Google.");
         return await response.json();
     } catch (error) {
@@ -66,7 +72,7 @@ async function prosesLogin(e) {
         let isSuccess = false; let finalName = ""; let finalRole = "";
 
         // Bypass local superadmin
-        if (user.toUpperCase() === "AKBAR RASYID" && pass === "0225065474") {
+        if (user.toUpperCase() === "AKBAR RASYID" && (pass === "0225065474" || pass === "service quality")) {
             isSuccess = true; finalName = "AKBAR RASYID"; finalRole = "Admin";
         } 
         else {
@@ -138,7 +144,7 @@ async function fetchData() {
         document.getElementById('dataContainer').innerHTML = `<div class="text-center text-danger py-5">
             <i class="bi bi-shield-lock fs-1 d-block mb-2"></i>
             <div class="fw-bold">Gagal Mengambil Data</div>
-            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">Periksa URL Web App atau Pengaturan Share Sheet.</div>
+            <div class="small fw-semibold mt-2 text-dark bg-warning bg-opacity-10 py-2 px-3 rounded d-inline-block text-start">Periksa URL Web App atau Pengaturan Akses "Anyone".</div>
             <button class="btn btn-sm btn-outline-primary mt-3" onclick="fetchData()">Coba Lagi</button>
         </div>`;
     }
@@ -273,11 +279,26 @@ function updateSubmitBar() { const bar = document.getElementById('submitBar'); d
 async function kirimData() {
     const res = await Swal.fire({ title: 'Kirim Data?', text: `${queue.length} validasi siap diproses.`, icon: 'question', showCancelButton: true, confirmButtonText: 'Kirim Sekarang', confirmButtonColor: '#10B981', cancelButtonText: 'Batal' });
     if (!res.isConfirmed) return;
+    
     Swal.fire({ title: 'Memproses...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    
     try {
-        await fetch(URL_WEB_APP, { method: 'POST', mode: 'no-cors', body: JSON.stringify(queue) });
+        // TRIK ANTI-CORS: Menggunakan text/plain agar browser tidak mengirim request OPTIONS yang akan diblokir Google
+        const response = await fetch(URL_WEB_APP, { 
+            method: 'POST', 
+            redirect: 'follow',
+            headers: {
+                'Content-Type': 'text/plain;charset=utf-8' 
+            },
+            body: JSON.stringify(queue) 
+        });
+        
+        await response.text(); 
         setTimeout(() => { Swal.fire({ icon: 'success', title: 'Terkirim', text: 'Sistem berhasil diupdate.', timer: 1500, showConfirmButton: false }); resetPilihan(); fetchData(); }, 1200);
-    } catch (e) { Swal.fire('Error', 'Gagal mengirim data ke server.', 'error'); }
+    } catch (e) { 
+        console.error("POST Error:", e);
+        Swal.fire('Error', 'Gagal mengirim data ke server. Pastikan Akses Deploy diset ke Anyone.', 'error'); 
+    }
 }
 
 function bukaPopup(url) {
