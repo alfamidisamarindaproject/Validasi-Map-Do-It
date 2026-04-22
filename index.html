@@ -11,64 +11,69 @@
     
     <style>
         :root { 
-            --bg-body: #F4F7FE; 
+            --bg-body: #F8FAFC; 
             --primary: #2563EB; 
-            --text-main: #1E293B; 
+            --primary-hover: #1D4ED8;
+            --text-main: #0F172A; 
             --text-muted: #64748B;
             --card-bg: #FFFFFF;
             --border-color: #E2E8F0;
+            --success: #10B981;
+            --danger: #EF4444;
         }
         
-        body { background-color: var(--bg-body); font-family: 'Inter', sans-serif; color: var(--text-main); padding-bottom: 100px; }
+        body { background-color: var(--bg-body); font-family: 'Inter', sans-serif; color: var(--text-main); padding-bottom: 90px; }
         
         /* --- LAYAR LOGIN --- */
-        #loginScreen { position: fixed; inset: 0; background: var(--bg-body); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
-        .login-wrapper { background: var(--card-bg); border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.05); width: 100%; max-width: 400px; padding: 40px 30px; border: 1px solid var(--border-color); }
-        .login-wrapper .form-control { background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; height: 50px; font-weight: 500; }
-        .login-wrapper .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-        .btn-login { background: var(--primary); border: none; border-radius: 12px; font-weight: 600; height: 50px; }
+        #loginScreen { position: fixed; inset: 0; background: linear-gradient(135deg, #F4F7FE 0%, #E0E7FF 100%); display: flex; justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+        .login-wrapper { background: var(--card-bg); border-radius: 24px; box-shadow: 0 20px 40px -15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; padding: 40px 30px; border: 1px solid rgba(255,255,255,0.5); }
+        .login-wrapper .form-control { background: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 12px; height: 50px; font-weight: 500; transition: all 0.2s; }
+        .login-wrapper .form-control:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1); background: #FFF; }
+        .btn-login { background: var(--primary); border: none; border-radius: 12px; font-weight: 600; height: 50px; transition: background 0.2s; }
+        .btn-login:hover { background: var(--primary-hover); }
         
-        /* --- NAVBAR & HEADER --- */
+        /* --- NAVBAR --- */
         #appContainer { display: none; }
-        .top-navbar { background: var(--card-bg); border-bottom: 1px solid var(--border-color); padding: 15px 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
-        .brand-logo { width: 40px; height: 40px; background: #EFF6FF; color: var(--primary); border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; }
+        .top-navbar { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border-color); padding: 12px 0; position: sticky; top: 0; z-index: 100; box-shadow: 0 1px 3px rgba(0,0,0,0.02); }
+        .brand-logo { width: 38px; height: 38px; background: linear-gradient(135deg, #2563EB, #60A5FA); color: white; border-radius: 10px; display: flex; justify-content: center; align-items: center; font-size: 1.2rem; }
         
-        .user-profile { background: #F8FAFC; border: 1px solid var(--border-color); padding: 6px 12px 6px 6px; border-radius: 50px; display: inline-flex; align-items: center; gap: 10px; }
+        .user-profile { background: #F8FAFC; border: 1px solid var(--border-color); padding: 5px 10px 5px 5px; border-radius: 50px; display: inline-flex; align-items: center; gap: 8px; }
         .user-avatar { width: 32px; height: 32px; background: var(--primary); color: white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 0.85rem; font-weight: bold; }
-        .admin-avatar { background: #F59E0B; }
+        .admin-avatar { background: linear-gradient(135deg, #F59E0B, #FCD34D); color: #78350F; }
         
-        /* --- KONTROL PENCARIAN --- */
-        .toolbar-card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid var(--border-color); margin-top: 25px; margin-bottom: 25px; }
-        .toolbar-card .form-control { border-radius: 10px; border: 1px solid var(--border-color); background: #F8FAFC; }
+        /* --- TOOLBAR --- */
+        .toolbar-card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid var(--border-color); margin-top: 20px; margin-bottom: 20px; }
+        .toolbar-card .form-control { border-radius: 10px; border: 1px solid #CBD5E1; }
         
-        /* --- TABEL & KARTU DATA --- */
-        .data-card { background: var(--card-bg); border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid var(--border-color); overflow: hidden; margin-bottom: 20px; transition: opacity 0.3s; }
-        .data-card-header { padding: 15px 20px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
-        .data-card-body { padding: 20px; }
+        /* --- KARTU DATA (MOBILE) --- */
+        .data-card { background: var(--card-bg); border-radius: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid var(--border-color); overflow: hidden; margin-bottom: 16px; transition: all 0.3s ease; }
+        .data-card:hover { box-shadow: 0 8px 16px rgba(0,0,0,0.08); transform: translateY(-2px); }
+        .data-card-header { padding: 12px 16px; border-bottom: 1px solid #F1F5F9; display: flex; justify-content: space-between; align-items: center; background: #F8FAFC; }
+        .data-card-body { padding: 16px; }
+        .item-done { opacity: 0.6; background: #F1F5F9 !important; transform: scale(0.99); pointer-events: none; border-color: transparent; }
         
+        /* --- TABEL (DESKTOP) --- */
         .table-custom { margin-bottom: 0; }
-        .table-custom thead th { background: #F8FAFC; color: var(--text-muted); font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding: 15px 20px; }
-        .table-custom tbody td { padding: 15px 20px; vertical-align: middle; border-bottom: 1px solid #F1F5F9; font-size: 0.95rem; }
-        
-        /* Feedback Data Dipilih */
-        .item-done { opacity: 0.55; background: #F8FAFC !important; pointer-events: none; }
+        .table-custom thead th { background: #F8FAFC; color: var(--text-muted); font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-color); padding: 16px; }
+        .table-custom tbody td { padding: 16px; vertical-align: middle; border-bottom: 1px solid #F1F5F9; font-size: 0.9rem; }
         
         /* --- CHECKLIST GRID --- */
-        .check-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .check-item { background: #F8FAFC; border: 1px solid #E2E8F0; padding: 8px 12px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; font-weight: 500; }
-        .icon-ok { color: #10B981; font-size: 1rem; }
-        .icon-nok { color: #EF4444; font-size: 1rem; }
+        .check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 6px; }
+        .check-item { background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 10px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; font-weight: 600; }
+        .icon-ok { color: var(--success); font-size: 1rem; }
+        .icon-nok { color: var(--danger); font-size: 1rem; }
         
-        /* --- TOMBOL TOGGLE SWITCH (Modern) --- */
+        /* --- TOGGLE BUTTONS --- */
         .validation-group { display: flex; background: #F1F5F9; border-radius: 12px; padding: 4px; gap: 4px; border: 1px solid var(--border-color); pointer-events: auto; }
         .validation-group .btn-check + .btn { flex: 1; border: none; font-weight: 600; font-size: 0.85rem; border-radius: 8px; color: var(--text-muted); padding: 8px 0; transition: all 0.2s; }
-        .validation-group .btn-check:checked + .btn-outline-success { background: #10B981; color: white; box-shadow: 0 2px 5px rgba(16, 185, 129, 0.3); }
-        .validation-group .btn-check:checked + .btn-outline-danger { background: #EF4444; color: white; box-shadow: 0 2px 5px rgba(239, 68, 68, 0.3); }
+        .validation-group .btn-check:checked + .btn-outline-success { background: var(--success); color: white; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.4); }
+        .validation-group .btn-check:checked + .btn-outline-danger { background: var(--danger); color: white; box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4); }
         
-        /* --- BOTTOM SUBMIT BAR --- */
-        .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border-top: 1px solid var(--border-color); padding: 15px; box-shadow: 0 -10px 20px rgba(0,0,0,0.03); z-index: 1000; transform: translateY(100%); transition: transform 0.3s ease; }
+        /* --- SUBMIT BAR --- */
+        .submit-bar { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); border-top: 1px solid var(--border-color); padding: 15px 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.05); z-index: 1000; transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         .submit-bar.show { transform: translateY(0); }
-        .btn-submit { background: #10B981; border: none; border-radius: 50px; font-weight: 600; padding: 10px 30px; }
+        .btn-submit { background: var(--success); border: none; border-radius: 50px; font-weight: 600; padding: 12px 24px; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); transition: all 0.2s; }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4); }
     </style>
 </head>
 <body>
@@ -76,20 +81,20 @@
 <div id="loginScreen">
     <div class="login-wrapper text-center">
         <div class="mb-4">
-            <div class="d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px; background: #EFF6FF; color: var(--primary); border-radius: 16px;">
-                <i class="bi bi-shield-check fs-1"></i>
+            <div class="d-inline-flex align-items-center justify-content-center mb-3" style="width: 72px; height: 72px; background: #EFF6FF; color: var(--primary); border-radius: 20px;">
+                <i class="bi bi-shield-lock-fill fs-1"></i>
             </div>
-            <h4 class="fw-bold mb-1">Sistem Validasi</h4>
-            <p class="text-muted small">Masuk dengan kredensial GSheet Anda</p>
+            <h4 class="fw-bold mb-1">MAP DO IT</h4>
+            <p class="text-muted small">Sistem Validasi Area</p>
         </div>
         
         <form id="formLogin" onsubmit="prosesLogin(event)">
             <div class="mb-3 text-start">
-                <label class="form-label small fw-semibold text-muted mb-1">Nama Lengkap</label>
-                <input type="text" class="form-control" id="logUsername" placeholder="Sesuai struktur area..." required autocomplete="off">
+                <label class="form-label small fw-semibold text-muted mb-1 ms-1">Nama Lengkap (AC/AM)</label>
+                <input type="text" class="form-control" id="logUsername" placeholder="Ketik nama Anda..." required autocomplete="off">
             </div>
             <div class="mb-4 text-start">
-                <label class="form-label small fw-semibold text-muted mb-1">Password</label>
+                <label class="form-label small fw-semibold text-muted mb-1 ms-1">Password (NIK)</label>
                 <input type="password" class="form-control" id="logPassword" placeholder="••••••••" required>
             </div>
             <button type="submit" class="btn btn-primary btn-login w-100 shadow-sm" id="btnLogin">
@@ -105,8 +110,8 @@
             <div class="d-flex align-items-center gap-2">
                 <div class="brand-logo"><i class="bi bi-grid-fill"></i></div>
                 <div>
-                    <h6 class="mb-0 fw-bold">MAP DO IT</h6>
-                    <div class="small text-muted" style="font-size: 0.7rem;">Panel Verifikasi</div>
+                    <h6 class="mb-0 fw-bold" style="letter-spacing: -0.5px;">MAP DO IT</h6>
+                    <div class="text-muted" style="font-size: 0.65rem; font-weight: 600; text-transform: uppercase;">Panel Verifikasi</div>
                 </div>
             </div>
             
@@ -114,10 +119,10 @@
                 <div class="user-avatar" id="avatarInisial">A</div>
                 <div class="d-none d-md-block text-start pe-2">
                     <div class="fw-bold lh-1" id="displayUserName" style="font-size: 0.85rem;">Memuat...</div>
-                    <div class="small text-muted" id="displayUserRole" style="font-size: 0.75rem;">Role</div>
+                    <div class="text-muted mt-1" id="displayUserRole" style="font-size: 0.7rem; font-weight: 600; text-transform: uppercase;">Role</div>
                 </div>
                 <button class="btn btn-sm btn-light border rounded-circle ms-1 text-danger" onclick="prosesLogout()" title="Keluar">
-                    <i class="bi bi-box-arrow-right"></i>
+                    <i class="bi bi-power"></i>
                 </button>
             </div>
         </div>
@@ -127,37 +132,40 @@
         <div class="toolbar-card">
             <div class="row g-3 align-items-end">
                 <div class="col-12 col-md-3">
-                    <label class="small fw-semibold text-muted mb-1">Cari Nama</label>
-                    <input type="text" id="inputNama" class="form-control" placeholder="Ketik nama personil...">
+                    <label class="small fw-semibold text-muted mb-1 ms-1">Cari Nama Personil</label>
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="inputNama" class="form-control border-start-0 ps-0" placeholder="Ketik nama...">
+                    </div>
                 </div>
                 <div class="col-6 col-md-2">
-                    <label class="small fw-semibold text-muted mb-1">Toko</label>
-                    <input type="text" id="inputToko" class="form-control" placeholder="Cth: T001">
+                    <label class="small fw-semibold text-muted mb-1 ms-1">Toko</label>
+                    <input type="text" id="inputToko" class="form-control" placeholder="Cth: SG04">
                 </div>
                 <div class="col-6 col-md-3">
-                    <label class="small fw-semibold text-muted mb-1">Tanggal</label>
-                    <input type="date" id="inputTanggal" class="form-control">
+                    <label class="small fw-semibold text-muted mb-1 ms-1">Filter Tanggal</label>
+                    <input type="date" id="inputTanggal" class="form-control text-muted">
                 </div>
                 <div class="col-12 col-md-4 d-flex gap-2">
-                    <button class="btn btn-primary flex-grow-1 fw-semibold" onclick="fetchData()" style="border-radius: 10px;">
+                    <button class="btn btn-primary flex-grow-1 fw-semibold shadow-sm" onclick="fetchData()" style="border-radius: 10px;">
                         <i class="bi bi-arrow-clockwise me-1"></i> Refresh
                     </button>
                     <div class="dropdown flex-grow-1">
-                        <button class="btn btn-light border w-100 fw-semibold dropdown-toggle" type="button" data-bs-toggle="dropdown" style="border-radius: 10px;">
-                            <i class="bi bi-check2-all me-1"></i> Massal
+                        <button class="btn btn-light border w-100 fw-semibold dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown" style="border-radius: 10px;">
+                            <i class="bi bi-ui-checks-grid me-1"></i> Massal
                         </button>
-                        <ul class="dropdown-menu shadow-sm border-0 rounded-3 mt-1">
-                            <li><a class="dropdown-item text-success fw-semibold py-2" href="#" onclick="tandaiSemua('OK')"><i class="bi bi-check-circle me-2"></i>Pilih Semua OK</a></li>
-                            <li><a class="dropdown-item text-danger fw-semibold py-2" href="#" onclick="tandaiSemua('NOK')"><i class="bi bi-x-circle me-2"></i>Pilih Semua NOK</a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-secondary py-2" href="#" onclick="resetPilihan()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Pilihan</a></li>
+                        <ul class="dropdown-menu shadow border-0 rounded-4 mt-2 p-2">
+                            <li><a class="dropdown-item text-success fw-semibold rounded-3 py-2" href="#" onclick="event.preventDefault(); tandaiSemua('OK')"><i class="bi bi-check-circle-fill me-2"></i>Pilih Semua OK</a></li>
+                            <li><a class="dropdown-item text-danger fw-semibold rounded-3 py-2 mt-1" href="#" onclick="event.preventDefault(); tandaiSemua('NOK')"><i class="bi bi-x-circle-fill me-2"></i>Pilih Semua NOK</a></li>
+                            <li><hr class="dropdown-divider my-2"></li>
+                            <li><a class="dropdown-item text-secondary fw-medium rounded-3 py-2" href="#" onclick="event.preventDefault(); resetPilihan()"><i class="bi bi-arrow-counterclockwise me-2"></i>Reset Pilihan</a></li>
                         </ul>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div id="dataContainer" class="pb-5 mb-5">
+        <div id="dataContainer" class="pb-4">
             <div class="text-center py-5">
                 <div class="spinner-border text-primary mb-3"></div>
                 <div class="text-muted fw-medium">Menghubungkan ke server...</div>
@@ -166,18 +174,18 @@
     </div>
 
     <div class="submit-bar" id="submitBar">
-        <div class="container-fluid px-2 d-flex justify-content-between align-items-center">
+        <div class="container-fluid p-0 d-flex justify-content-between align-items-center">
             <div class="d-flex align-items-center gap-3">
-                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 45px; height: 45px; font-size: 1.2rem; font-weight: bold;">
+                <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px; font-size: 1.2rem; font-weight: bold; border: 3px solid #DBEAFE;">
                     <span id="countSelected">0</span>
                 </div>
                 <div>
-                    <div class="fw-bold text-dark lh-1">Data Disimpan</div>
-                    <div class="small text-muted d-none d-md-block">Menunggu konfirmasi Anda</div>
+                    <div class="fw-bold text-dark lh-1 mb-1">Siap Dikirim</div>
+                    <div class="small text-muted fw-medium">Menunggu konfirmasi Anda</div>
                 </div>
             </div>
-            <button class="btn btn-success btn-submit shadow-sm" onclick="kirimData()">
-                <i class="bi bi-cloud-arrow-up me-2"></i>KIRIM VALIDASI
+            <button class="btn btn-success btn-submit text-white" onclick="kirimData()">
+                <i class="bi bi-cloud-arrow-up-fill me-2"></i>KIRIM DATA
             </button>
         </div>
     </div>
@@ -187,10 +195,10 @@
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content border-0 bg-transparent text-center">
             <div class="d-flex justify-content-end mb-2">
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="background-color: rgba(255,255,255,0.8); border-radius: 50%; padding: 10px;"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" style="background-color: rgba(255,255,255,0.9); border-radius: 50%; padding: 12px;"></button>
             </div>
-            <div id="loadingGambar" class="text-white py-5"><div class="spinner-border"></div></div>
-            <img src="" id="frameFoto" class="img-fluid rounded-3 shadow" style="display:none; max-height: 80vh; margin: 0 auto; object-fit: contain;">
+            <div id="loadingGambar" class="text-white py-5"><div class="spinner-border"></div><div class="mt-2 fw-medium">Memuat Foto...</div></div>
+            <img src="" id="frameFoto" class="img-fluid rounded-4 shadow-lg" style="display:none; max-height: 80vh; margin: 0 auto; object-fit: contain; border: 3px solid white;">
         </div>
     </div>
 </div>
