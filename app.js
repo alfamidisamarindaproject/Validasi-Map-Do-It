@@ -1,5 +1,5 @@
 // ===== URL WEB APP ANDA =====
-const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbyEImukK75siuKSSEWeR-IDvgyQFP0a6CuCPewlMt4boqWemorCiaalEPI7_Y0h8-zXCA/exec";
+const URL_WEB_APP = "https://script.google.com/macros/s/AKfycbwhRUHLx_Q3UmW7gEdJqUqrDQBDnEwgzM-yCmYGVu_bvXahjPGyCyhWPi_Rl-VOU8gO/exec";
 
 let allDataRaw = [];
 let filteredData = []; 
